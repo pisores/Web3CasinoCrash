@@ -1,8 +1,31 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { gameSocket } from "./websocket";
 import { insertUserSchema, insertBetSchema, gamesConfig, type GameType } from "@shared/schema";
 import { z } from "zod";
+
+// Helper to broadcast bet to all connected clients
+async function broadcastBetResult(
+  odejs: string,
+  gameType: string,
+  amount: number,
+  payout: number,
+  isWin: boolean
+) {
+  const user = await storage.getUser(odejs);
+  if (user) {
+    gameSocket.broadcastBet({
+      odejs: user.id,
+      username: user.username || user.firstName || "Player",
+      photoUrl: user.photoUrl || null,
+      gameType,
+      amount,
+      payout,
+      isWin,
+    });
+  }
+}
 
 // Game logic utilities
 function generateCrashPoint(): number {
@@ -351,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Record bet
       await storage.createBet({
-        userId: data.userId,
+        odejs: data.odejs,
         gameType: "dice",
         amount: data.amount,
         multiplier: isWin ? multiplier : 0,
@@ -359,6 +382,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isWin,
         gameData: JSON.stringify({ roll, target: data.target, isOver: data.isOver }),
       });
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "dice", data.amount, payout, isWin);
       
       res.json({
         roll,
@@ -591,7 +617,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(bets);
   });
 
+  // Get online stats
+  app.get("/api/stats/online", (req, res) => {
+    res.json(gameSocket.getStats());
+  });
+
   const httpServer = createServer(app);
+  
+  // Initialize WebSocket server
+  gameSocket.setup(httpServer);
 
   return httpServer;
 }

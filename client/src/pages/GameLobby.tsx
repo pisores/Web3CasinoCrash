@@ -1,6 +1,7 @@
 import { gamesConfig, type GameType } from "@shared/schema";
 import { GameCard } from "@/components/GameCard";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
+import { LiveFeed, OnlineCounter } from "@/components/LiveFeed";
 import { useTelegram } from "@/components/TelegramProvider";
 import { Trophy, User, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,8 +51,11 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile }: GameLobbyPro
             </div>
           </Button>
 
-          {/* Balance */}
-          <BalanceDisplay balance={balance} />
+          {/* Online Counter & Balance */}
+          <div className="flex items-center gap-3">
+            <OnlineCounter />
+            <BalanceDisplay balance={balance} />
+          </div>
         </div>
       </header>
 
@@ -96,6 +100,11 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile }: GameLobbyPro
             <p className="text-xs text-muted-foreground mt-1">Live</p>
           </div>
         </div>
+
+        {/* Live Feed */}
+        <section className="bg-card border border-card-border rounded-2xl p-4">
+          <LiveFeed />
+        </section>
 
         {/* Games Section */}
         <section>
