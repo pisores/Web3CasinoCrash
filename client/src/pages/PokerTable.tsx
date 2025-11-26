@@ -236,6 +236,9 @@ export function PokerTable({
         }
       }
 
+      if (data.type === "error") {
+        toast({ title: data.message || "Ошибка", variant: "destructive" });
+      }
     };
 
     ws.onclose = () => {
@@ -285,6 +288,18 @@ export function PokerTable({
       onBalanceChange(balance - buyInAmount);
       setShowBuyIn(false);
       hapticFeedback("medium");
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "sit_down",
+          tableId,
+          odejs: user?.id,
+          seatNumber: data.seatNumber,
+          buyIn: buyInAmount,
+          username: user?.first_name || user?.username || "Player",
+          photoUrl: user?.photo_url,
+        }));
+      }
     } catch (error) {
       toast({ title: "Ошибка", description: "Не удалось сесть за стол", variant: "destructive" });
     }
@@ -297,6 +312,14 @@ export function PokerTable({
     }
 
     try {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "leave_table",
+          tableId,
+          seatNumber: mySeat,
+        }));
+      }
+
       const res = await fetch(`/api/poker/tables/${tableId}/leave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
