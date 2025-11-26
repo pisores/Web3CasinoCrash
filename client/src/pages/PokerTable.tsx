@@ -52,7 +52,7 @@ function PlayingCard({ card, hidden = false, size = "md" }: { card?: Card; hidde
   }
 
   return (
-    <div className={`${sizeClasses[size]} bg-white rounded-md border border-zinc-200 flex flex-col items-center justify-center font-bold shadow-lg ${SUIT_COLORS[card.suit]}`}>
+    <div className={`${sizeClasses[size]} bg-zinc-100 rounded-md border border-zinc-300 flex flex-col items-center justify-center font-bold shadow-lg ${SUIT_COLORS[card.suit]}`}>
       <span className="leading-none">{card.rank}</span>
       <span className="leading-none text-lg">{SUIT_SYMBOLS[card.suit]}</span>
     </div>
@@ -142,7 +142,7 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
         </div>
 
         {player.isDealer && (
-          <div className="absolute -bottom-1 -left-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold text-black shadow-md border border-zinc-300">
+          <div className="absolute -bottom-1 -left-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-xs font-bold text-black shadow-md border border-yellow-600">
             D
           </div>
         )}
@@ -297,8 +297,8 @@ export function PokerTable({
           odejs: user?.id,
           seatNumber: data.seatNumber,
           buyIn: buyInAmount,
-          username: user?.first_name || user?.username || "Player",
-          photoUrl: user?.photo_url,
+          username: user?.firstName || user?.username || "Player",
+          photoUrl: user?.photoUrl,
         }));
       }
     } catch (error) {
