@@ -1,6 +1,6 @@
-import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, type PromoCode, type InsertPromoCode, type PromoCodeUsage, users, bets, withdrawals, settings, promoCodes, promoCodeUsage } from "@shared/schema";
+import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, type PromoCode, type InsertPromoCode, type PromoCodeUsage, type BalanceHistory, users, bets, withdrawals, settings, promoCodes, promoCodeUsage, balanceHistory } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -31,6 +31,13 @@ export interface IStorage {
   incrementPromoCodeUsage(id: string): Promise<PromoCode | undefined>;
   checkPromoCodeUsage(odejs: string, promoCodeId: string): Promise<boolean>;
   recordPromoCodeUsage(odejs: string, promoCodeId: string): Promise<PromoCodeUsage>;
+  // User activity & balance history
+  updateLastSeen(id: string): Promise<User | undefined>;
+  getRecentlyActiveUsers(): Promise<User[]>;
+  addBalanceHistory(odejs: string, amount: number, balanceAfter: number, type: string, description?: string): Promise<BalanceHistory>;
+  getBalanceHistory(odejs: string, limit?: number): Promise<BalanceHistory[]>;
+  getAllBalanceHistory(limit?: number): Promise<BalanceHistory[]>;
+  getUserWithdrawals(odejs: string): Promise<Withdrawal[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -177,6 +184,34 @@ export class DatabaseStorage implements IStorage {
     const [usage] = await db.insert(promoCodeUsage).values({ odejs, promoCodeId }).returning();
     return usage;
   }
+
+  async updateLastSeen(id: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async getRecentlyActiveUsers(): Promise<User[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return db.select().from(users).where(gte(users.lastSeenAt, today)).orderBy(desc(users.lastSeenAt));
+  }
+
+  async addBalanceHistory(odejs: string, amount: number, balanceAfter: number, type: string, description?: string): Promise<BalanceHistory> {
+    const [history] = await db.insert(balanceHistory).values({ odejs, amount, balanceAfter, type, description }).returning();
+    return history;
+  }
+
+  async getBalanceHistory(odejs: string, limit: number = 50): Promise<BalanceHistory[]> {
+    return db.select().from(balanceHistory).where(eq(balanceHistory.odejs, odejs)).orderBy(desc(balanceHistory.createdAt)).limit(limit);
+  }
+
+  async getAllBalanceHistory(limit: number = 100): Promise<BalanceHistory[]> {
+    return db.select().from(balanceHistory).orderBy(desc(balanceHistory.createdAt)).limit(limit);
+  }
+
+  async getUserWithdrawals(odejs: string): Promise<Withdrawal[]> {
+    return db.select().from(withdrawals).where(eq(withdrawals.odejs, odejs)).orderBy(desc(withdrawals.createdAt));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -221,14 +256,19 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = { 
-      ...insertUser, 
       id,
+      telegramId: insertUser.telegramId,
+      username: insertUser.username || null,
+      firstName: insertUser.firstName || null,
+      lastName: insertUser.lastName || null,
+      photoUrl: insertUser.photoUrl || null,
       balance: insertUser.balance ?? 1,
       walletAddress: null,
       isAdmin: insertUser.isAdmin ?? false,
       referralCode: null,
       referredBy: null,
       referralCount: 0,
+      lastSeenAt: new Date(),
     };
     this.users.set(id, user);
     return user;
@@ -273,8 +313,14 @@ export class MemStorage implements IStorage {
   async createBet(insertBet: InsertBet): Promise<Bet> {
     const id = randomUUID();
     const bet: Bet = {
-      ...insertBet,
       id,
+      odejs: insertBet.odejs,
+      gameType: insertBet.gameType,
+      amount: insertBet.amount,
+      multiplier: insertBet.multiplier ?? null,
+      payout: insertBet.payout ?? null,
+      isWin: insertBet.isWin,
+      gameData: insertBet.gameData ?? null,
       createdAt: new Date(),
     };
     this.bets.set(id, bet);
@@ -353,10 +399,14 @@ export class MemStorage implements IStorage {
   async createPromoCode(insertPromoCode: InsertPromoCode): Promise<PromoCode> {
     const id = randomUUID();
     const promo: PromoCode = {
-      ...insertPromoCode,
       id,
+      code: insertPromoCode.code,
+      bonusAmount: insertPromoCode.bonusAmount,
+      maxUses: insertPromoCode.maxUses ?? null,
       currentUses: 0,
+      isActive: insertPromoCode.isActive ?? true,
       createdAt: new Date(),
+      createdBy: insertPromoCode.createdBy ?? null,
     };
     this.promoCodesMap.set(id, promo);
     return promo;
@@ -387,6 +437,42 @@ export class MemStorage implements IStorage {
     const key = `${odejs}-${promoCodeId}`;
     this.promoCodeUsageMap.set(key, usage);
     return usage;
+  }
+
+  async updateLastSeen(id: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    const updated = { ...user, lastSeenAt: new Date() };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async getRecentlyActiveUsers(): Promise<User[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Array.from(this.users.values())
+      .filter(u => u.lastSeenAt && u.lastSeenAt >= today)
+      .sort((a, b) => (b.lastSeenAt?.getTime() || 0) - (a.lastSeenAt?.getTime() || 0));
+  }
+
+  async addBalanceHistory(odejs: string, amount: number, balanceAfter: number, type: string, description?: string): Promise<BalanceHistory> {
+    const id = randomUUID();
+    const history: BalanceHistory = { id, odejs, amount, balanceAfter, type, description: description || null, createdAt: new Date() };
+    return history;
+  }
+
+  async getBalanceHistory(odejs: string, limit: number = 50): Promise<BalanceHistory[]> {
+    return [];
+  }
+
+  async getAllBalanceHistory(limit: number = 100): Promise<BalanceHistory[]> {
+    return [];
+  }
+
+  async getUserWithdrawals(odejs: string): Promise<Withdrawal[]> {
+    return Array.from(this.withdrawalsMap.values())
+      .filter(w => w.odejs === odejs)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 }
 

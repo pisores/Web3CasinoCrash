@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   referralCode: text("referral_code").unique(),
   referredBy: text("referred_by"),
   referralCount: real("referral_count").default(0),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -113,6 +114,19 @@ export const promoCodeUsage = pgTable("promo_code_usage", {
 });
 
 export type PromoCodeUsage = typeof promoCodeUsage.$inferSelect;
+
+// Balance history table - tracks all balance changes
+export const balanceHistory = pgTable("balance_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  odejs: text("user_id").notNull(),
+  amount: real("amount").notNull(),
+  balanceAfter: real("balance_after").notNull(),
+  type: text("type").notNull(), // 'bet', 'win', 'deposit', 'withdraw', 'promo', 'referral', 'admin'
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type BalanceHistory = typeof balanceHistory.$inferSelect;
 
 // Game configuration
 export interface GameConfig {

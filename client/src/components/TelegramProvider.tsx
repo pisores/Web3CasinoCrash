@@ -177,6 +177,20 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
     staleTime: 30000,
   });
 
+  // Send heartbeat to track user activity
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const sendHeartbeat = () => {
+      fetch(`/api/users/${user.id}/heartbeat`, { method: "POST" }).catch(() => {});
+    };
+    
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 60000);
+    
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   // Update balance mutation
   const updateBalanceMutation = useMutation({
     mutationFn: async (newBalance: number) => {

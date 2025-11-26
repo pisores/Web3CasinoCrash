@@ -1076,6 +1076,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ACTIVITY & HISTORY ENDPOINTS =====
+
+  // Update user last seen (called on every app open)
+  app.post("/api/users/:id/heartbeat", async (req, res) => {
+    try {
+      const user = await storage.updateLastSeen(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update activity" });
+    }
+  });
+
+  // Get recently active users (admin)
+  app.get("/api/admin/users/active", checkAdmin, async (req, res) => {
+    try {
+      const activeUsers = await storage.getRecentlyActiveUsers();
+      res.json(activeUsers);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get active users" });
+    }
+  });
+
+  // Get user game history (admin)
+  app.get("/api/admin/users/:id/bets", checkAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const userBets = await storage.getUserBets(req.params.id, limit);
+      res.json(userBets);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get user bets" });
+    }
+  });
+
+  // Get user balance history (admin)
+  app.get("/api/admin/users/:id/balance-history", checkAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const history = await storage.getBalanceHistory(req.params.id, limit);
+      res.json(history);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get balance history" });
+    }
+  });
+
+  // Get user withdrawals (admin)
+  app.get("/api/admin/users/:id/withdrawals", checkAdmin, async (req, res) => {
+    try {
+      const userWithdrawals = await storage.getUserWithdrawals(req.params.id);
+      res.json(userWithdrawals);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get user withdrawals" });
+    }
+  });
+
+  // Get all recent bets (admin)
+  app.get("/api/admin/bets", checkAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const recentBets = await storage.getRecentBets(limit);
+      res.json(recentBets);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get bets" });
+    }
+  });
+
+  // Get all balance history (admin)
+  app.get("/api/admin/balance-history", checkAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const history = await storage.getAllBalanceHistory(limit);
+      res.json(history);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get balance history" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Initialize WebSocket server

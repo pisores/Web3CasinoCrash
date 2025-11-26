@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Wallet, ArrowUpRight, Gift, CheckCircle, Clock, XCircle, Ticket } from "lucide-react";
+import { ArrowLeft, Wallet, ArrowUpRight, Gift, CheckCircle, Clock, XCircle, Ticket, Copy, ArrowDownLeft } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+const DEPOSIT_ADDRESS = "UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs";
 
 interface WalletPageProps {
   balance: number;
@@ -136,17 +138,67 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="promo">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="deposit">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="deposit" data-testid="tab-deposit">
+              <ArrowDownLeft className="w-4 h-4 mr-1" />
+              Пополнить
+            </TabsTrigger>
             <TabsTrigger value="promo" data-testid="tab-promo">
-              <Ticket className="w-4 h-4 mr-2" />
+              <Ticket className="w-4 h-4 mr-1" />
               Промокод
             </TabsTrigger>
             <TabsTrigger value="withdraw" data-testid="tab-withdraw">
-              <ArrowUpRight className="w-4 h-4 mr-2" />
+              <ArrowUpRight className="w-4 h-4 mr-1" />
               Вывести
             </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="deposit">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ArrowDownLeft className="w-5 h-5 text-green-400" />
+                  Пополнение баланса
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Отправьте TON/USDT на этот адрес для пополнения баланса
+                </p>
+                
+                <div className="p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-xs text-muted-foreground mb-2">TON кошелёк для пополнения:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-background/50 p-2 rounded break-all" data-testid="text-deposit-address">
+                      {DEPOSIT_ADDRESS}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(DEPOSIT_ADDRESS);
+                        toast({ title: "Скопировано!", description: "Адрес скопирован в буфер обмена" });
+                      }}
+                      data-testid="button-copy-address"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                  <p className="text-sm font-medium text-yellow-400">Важно:</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>1. Отправьте TON или USDT на указанный адрес</li>
+                    <li>2. Укажите ваш Telegram ID в комментарии к переводу</li>
+                    <li>3. Баланс будет пополнен в течение 5-10 минут</li>
+                    <li>4. Минимальная сумма: 1 USDT</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="promo">
             <Card>
