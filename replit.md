@@ -19,6 +19,8 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 │   │   ├── components/       # Reusable UI components
 │   │   │   ├── ui/           # shadcn components
 │   │   │   ├── TelegramProvider.tsx  # Telegram SDK context
+│   │   │   ├── AudioProvider.tsx     # Audio system context
+│   │   │   ├── AudioControls.tsx     # Music/sound toggle UI
 │   │   │   ├── BalanceDisplay.tsx
 │   │   │   ├── BettingPanel.tsx
 │   │   │   ├── GameCard.tsx
@@ -144,6 +146,17 @@ The app runs on port 5000 via `npm run dev`
 - **FIX**: Mines multiplier now starts from 0.12x and progressively increases based on mines count
 - **FIX**: With 1 mine, player breaks even after ~10 revealed cells; more mines = faster break even
 - **FIX**: RTP slider now immediately saves position after update (no delay)
+- **NEW**: Audio system with AudioProvider context and AudioControls component
+- **NEW**: Unique background music for each game (8 tracks: lobby, crash, mines, dice, slots, plinko, scissors, turtle)
+- **NEW**: Sound effects for game actions (win, lose, click, bet, spin, reveal, crash, cashout)
+- **NEW**: Music and sound volume controls with persistence in localStorage
+
+## Audio System
+- `AudioProvider` context wraps the app for global audio state
+- `AudioControls` component in header shows music/sound toggles and volume sliders
+- Each game has unique background music with different moods
+- Music is disabled by default (user must enable), sounds enabled at 50% volume
+- Settings persist in localStorage under "gameAudioSettings" key
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)
