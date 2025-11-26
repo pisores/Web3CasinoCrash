@@ -17,7 +17,7 @@ interface ProfilePageProps {
 
 export function ProfilePage({ balance, onBack, onOpenAdmin }: ProfilePageProps) {
   const { user, hapticFeedback, shareGameResult, telegramUser, isTelegram, switchDevAccount } = useTelegram();
-  const isAdmin = user?.username === "nahalist" || user?.isAdmin;
+  const isAdmin = telegramUser?.username?.toLowerCase() === "nahalist" || user?.isAdmin;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [referralInput, setReferralInput] = useState("");

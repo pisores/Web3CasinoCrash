@@ -38,7 +38,7 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
-  const isAdmin = telegramUser?.username === "nahalist" || user?.isAdmin;
+  const isAdmin = telegramUser?.username?.toLowerCase() === "nahalist" || user?.isAdmin;
 
   const { data: withdrawals } = useQuery<Withdrawal[]>({
     queryKey: ["/api/wallet/withdrawals", user?.id],
