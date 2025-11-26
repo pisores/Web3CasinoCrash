@@ -1,7 +1,7 @@
 # Telegram Mini App Casino
 
 ## Overview
-A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots, Plinko, Rock Paper Scissors, Turtle Race) with Telegram SDK integration for native mobile experience and PostgreSQL database for persistent balance storage.
+A Telegram Mini App casino game featuring eight games (Poker, Crash, Mines, Dice, Slots, Plinko, Rock Paper Scissors, Turtle Race) with Telegram SDK integration for native mobile experience and PostgreSQL database for persistent balance storage.
 
 ## Tech Stack
 - **Frontend**: React + TypeScript + Vite
@@ -27,6 +27,8 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 │   │   │   └── GameHeader.tsx
 │   │   ├── pages/            # Game screens
 │   │   │   ├── GameLobby.tsx
+│   │   │   ├── PokerLobby.tsx     # Poker table selection
+│   │   │   ├── PokerTable.tsx     # Poker game table
 │   │   │   ├── CrashGame.tsx
 │   │   │   ├── MinesGame.tsx
 │   │   │   ├── DiceGame.tsx
@@ -46,14 +48,15 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 └── design_guidelines.md      # Design system documentation
 ```
 
-## Games Available (7 Total)
-1. **Crash** - Multiplier game, cash out before crash (max 1000x)
-2. **Mines** - Find gems, avoid bombs on a 5x5 grid
-3. **Dice** - Roll over/under a target number (1-100)
-4. **Slots** - Classic slot machine with symbol matching
-5. **Plinko** - Ball drop through pegs with multipliers
-6. **Rock Paper Scissors** - Classic game vs computer (2x payout)
-7. **Turtle Race** - Bet on winning turtle (3x payout)
+## Games Available (8 Total)
+1. **Poker** - Texas Hold'em NL with 16 predefined tables (NL2-NL500), rake 5%
+2. **Crash** - Multiplier game, cash out before crash (max 1000x)
+3. **Mines** - Find gems, avoid bombs on a 5x5 grid
+4. **Dice** - Roll over/under a target number (1-100)
+5. **Slots** - Classic slot machine with symbol matching
+6. **Plinko** - Ball drop through pegs with multipliers
+7. **Rock Paper Scissors** - Classic game vs computer (2x payout)
+8. **Turtle Race** - Bet on winning turtle (3x payout)
 
 ## Database Schema
 - **users**: id, telegramId, username, firstName, lastName, balance, referralCode, referredBy, referralCount, walletAddress, isAdmin, lastSeenAt
@@ -61,6 +64,8 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 - **withdrawals**: id, userId, amount, walletAddress, status, createdAt, processedAt, processedBy
 - **promo_codes**: id, code, bonusAmount, maxUses, currentUses, isActive, createdAt, createdBy
 - **admin_settings**: id, winRatePercent, updatedAt, updatedBy
+- **poker_tables**: id, name, countryFlag, limit, maxSeats, smallBlind, bigBlind, minBuyIn, maxBuyIn, rakePercent, rakeCap, currentPlayers, isActive
+- **poker_seats**: id, tableId, odejs, seatNumber, chipStack, isActive, joinedAt
 
 ## API Endpoints
 
@@ -83,6 +88,12 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 - `POST /api/games/plinko/drop` - Drop Plinko ball
 - `POST /api/games/scissors/play` - Play Rock Paper Scissors
 - `POST /api/games/turtle/race` - Start Turtle Race
+
+### Poker Endpoints
+- `GET /api/poker/tables` - Get all poker tables
+- `GET /api/poker/tables/:id` - Get specific table info
+- `POST /api/poker/tables/:id/sit` - Sit at table with buy-in
+- `POST /api/poker/tables/:id/leave` - Leave table and cash out
 
 ### Wallet & Withdrawals
 - `POST /api/users/:id/wallet` - Set wallet address
@@ -150,6 +161,12 @@ The app runs on port 5000 via `npm run dev`
 - **NEW**: Unique background music for each game (8 tracks: lobby, crash, mines, dice, slots, plinko, scissors, turtle)
 - **NEW**: Sound effects for game actions (win, lose, click, bet, spin, reveal, crash, cashout)
 - **NEW**: Music and sound volume controls with persistence in localStorage
+- **NEW**: Full Poker room with 16 predefined tables (NL2-NL500)
+- **NEW**: Poker tables named after CIS countries (Russia, Ukraine, Belarus, Kazakhstan, etc.), Israel, and America
+- **NEW**: PokerLobby shows tables grouped by limits with player count
+- **NEW**: PokerTable with dark blue SVG table showing "PapaPoker" branding
+- **NEW**: Buy-in dialog with slider for selecting amount
+- **NEW**: Sit Out status when player is alone at table
 
 ## Audio System
 - `AudioProvider` context wraps the app for global audio state

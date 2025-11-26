@@ -133,11 +133,11 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
           player.isCurrentTurn ? "border-yellow-400 ring-2 ring-yellow-400/50" :
           isMe ? "border-emerald-500" : "border-blue-500"
         } shadow-lg`}>
-          {player.photoUrl ? (
-            <img src={player.photoUrl} alt={player.username} className="w-full h-full object-cover" />
+          {player.odejsPhotoUrl ? (
+            <img src={player.odejsPhotoUrl} alt={player.odejsname} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white font-bold text-lg">
-              {player.username?.[0]?.toUpperCase() || "?"}
+              {player.odejsname?.[0]?.toUpperCase() || "?"}
             </div>
           )}
         </div>
@@ -157,7 +157,7 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
 
       <div className={`mt-1 px-2 py-1 rounded-lg ${isMe ? "bg-emerald-600" : "bg-blue-600"} min-w-[60px] text-center shadow-md`}>
         <div className="text-[10px] text-white/90 font-medium truncate max-w-[70px]">
-          {truncateName(player.username || "Player", 9)}
+          {truncateName(player.odejsname || "Player", 9)}
         </div>
         <div className="text-xs font-bold text-white">
           ${player.chipStack.toFixed(0)}
@@ -307,6 +307,11 @@ export function PokerTable({
   };
 
   const handleLeave = async () => {
+    if (mySeat === null) {
+      onBack();
+      return;
+    }
+
     try {
       const res = await fetch(`/api/poker/tables/${tableId}/leave`, {
         method: "POST",
@@ -315,11 +320,13 @@ export function PokerTable({
       });
 
       if (res.ok) {
-        onBalanceChange(balance + chipStack);
-        onBack();
+        const data = await res.json();
+        onBalanceChange(balance + (data.returned || 0));
       }
+      onBack();
     } catch (error) {
       toast({ title: "Ошибка выхода", variant: "destructive" });
+      onBack();
     }
   };
 
@@ -393,7 +400,7 @@ export function PokerTable({
               <ellipse cx="200" cy="125" rx="165" ry="95" fill="none" stroke="#1a3a5a" strokeWidth="1" strokeDasharray="4,4" opacity="0.5" />
               
               <text x="200" y="130" textAnchor="middle" fill="#1a4a7a" fontSize="24" fontWeight="bold" opacity="0.3">
-                JackPoker
+                PapaPoker
               </text>
             </svg>
 
@@ -447,6 +454,8 @@ export function PokerTable({
               variant="ghost"
               size="icon"
               className="w-10 h-10 bg-zinc-800 rounded-lg"
+              onClick={handleLeave}
+              data-testid="button-back"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
