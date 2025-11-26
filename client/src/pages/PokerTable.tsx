@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, LogOut, Menu, Plus, Settings, Info } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -338,54 +338,33 @@ export function PokerTable({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col" data-testid="page-poker-table">
-      <header className="sticky top-0 z-50 bg-black border-b border-zinc-800">
-        <div className="px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8 bg-zinc-800"
-              data-testid="button-menu"
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8 bg-zinc-800"
-              data-testid="button-add"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
+    <div className="h-screen w-screen bg-zinc-950 flex flex-col overflow-hidden" data-testid="page-poker-table">
+      <header className="shrink-0 z-50 bg-black/80 backdrop-blur-sm">
+        <div className="px-2 py-1 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8"
+            onClick={handleLeave}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-xs">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-[10px]">
               PP
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8 bg-zinc-800"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8 bg-zinc-800"
-              data-testid="button-info"
-            >
-              <Info className="w-4 h-4" />
-            </Button>
+            <span className="text-zinc-400 text-xs">{tableName}</span>
           </div>
+
+          <BalanceDisplay balance={balance} currency="USDT" />
         </div>
       </header>
 
       <main className="flex-1 relative overflow-hidden bg-gradient-to-b from-zinc-950 to-zinc-900">
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-lg" style={{ aspectRatio: "16/10" }}>
+        <div className="absolute inset-0 flex items-center justify-center p-2">
+          <div className="relative w-full h-full max-h-[50vh]" style={{ aspectRatio: "2/1" }}>
             <svg viewBox="0 0 400 250" className="w-full h-full">
               <defs>
                 <linearGradient id="feltGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -467,42 +446,12 @@ export function PokerTable({
           </div>
         </div>
 
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center">
-          <div className="text-zinc-500 text-sm">{tableName}</div>
-          <div className="text-zinc-400 text-xs">Холдем Безлимитный</div>
-          <div className="text-zinc-400 text-xs">Ставки: ${smallBlind}/${bigBlind}</div>
-        </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-800">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-10 h-10 bg-zinc-800 rounded-lg"
-              onClick={handleLeave}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-10 h-10 bg-zinc-800 rounded-lg"
-              onClick={handleLeave}
-              data-testid="button-leave"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-          
-          <BalanceDisplay balance={balance} currency="USDT" />
-        </div>
-
+      <div className="shrink-0 bg-black/90 backdrop-blur-sm border-t border-zinc-800/50">
         {mySeat !== null && isMyTurn && (
-          <div className="px-4 pb-4 space-y-3">
-            <div className="flex items-center gap-3">
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
               <Slider
                 value={[betAmount]}
                 onValueChange={([v]) => setBetAmount(v)}
@@ -515,7 +464,7 @@ export function PokerTable({
                 type="number"
                 value={betAmount.toFixed(2)}
                 onChange={(e) => setBetAmount(parseFloat(e.target.value) || 0)}
-                className="w-20 bg-zinc-800 border-zinc-700 text-center"
+                className="w-16 h-8 bg-zinc-800 border-zinc-700 text-center text-sm"
               />
             </div>
 
@@ -523,7 +472,7 @@ export function PokerTable({
               <Button
                 variant="destructive"
                 onClick={() => sendAction("fold")}
-                className="h-11"
+                className="h-9 text-sm"
                 data-testid="button-fold"
               >
                 Фолд
@@ -533,7 +482,7 @@ export function PokerTable({
                 <Button
                   variant="secondary"
                   onClick={() => sendAction("check")}
-                  className="h-11"
+                  className="h-9 text-sm"
                   data-testid="button-check"
                 >
                   Чек
@@ -542,7 +491,7 @@ export function PokerTable({
                 <Button
                   variant="secondary"
                   onClick={() => sendAction("call")}
-                  className="h-11"
+                  className="h-9 text-sm"
                   data-testid="button-call"
                 >
                   Колл ${callAmount.toFixed(0)}
@@ -551,7 +500,7 @@ export function PokerTable({
 
               <Button
                 onClick={() => sendAction(gameState?.currentBet === 0 ? "bet" : "raise", betAmount)}
-                className="h-11 bg-emerald-600 hover:bg-emerald-700"
+                className="h-9 text-sm bg-emerald-600 hover:bg-emerald-700"
                 data-testid="button-raise"
               >
                 {gameState?.currentBet === 0 ? "Бет" : "Рейз"}
@@ -559,7 +508,7 @@ export function PokerTable({
 
               <Button
                 onClick={() => sendAction("all_in")}
-                className="h-11 bg-red-600 hover:bg-red-700"
+                className="h-9 text-sm bg-red-600 hover:bg-red-700"
                 data-testid="button-allin"
               >
                 All-In
@@ -569,14 +518,20 @@ export function PokerTable({
         )}
 
         {mySeat === null && !showBuyIn && (
-          <div className="px-4 pb-4">
+          <div className="px-3 py-2">
             <Button
-              className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700"
+              className="w-full h-10 text-sm bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setShowBuyIn(true)}
               data-testid="button-sit"
             >
               Сесть за стол (${minBuyIn.toFixed(2)} - ${maxBuyIn.toFixed(2)})
             </Button>
+          </div>
+        )}
+
+        {mySeat !== null && !isMyTurn && (
+          <div className="px-3 py-2 text-center">
+            <span className="text-zinc-500 text-sm">Ваш стек: ${chipStack.toFixed(2)}</span>
           </div>
         )}
       </div>
