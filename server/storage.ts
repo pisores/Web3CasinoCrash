@@ -13,6 +13,7 @@ export interface IStorage {
   updateUserWallet(id: string, walletAddress: string): Promise<User | undefined>;
   updateUserReferralCode(id: string, referralCode: string): Promise<User | undefined>;
   incrementReferralCount(id: string): Promise<User | undefined>;
+  updateUserAdmin(id: string, isAdmin: boolean): Promise<User | undefined>;
   createBet(bet: InsertBet): Promise<Bet>;
   getUserBets(odejs: string, limit?: number): Promise<Bet[]>;
   getRecentBets(limit?: number): Promise<Bet[]>;
@@ -86,6 +87,11 @@ export class DatabaseStorage implements IStorage {
     if (!currentUser) return undefined;
     const newCount = (currentUser.referralCount || 0) + 1;
     const [user] = await db.update(users).set({ referralCount: newCount }).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async updateUserAdmin(id: string, isAdmin: boolean): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ isAdmin }).where(eq(users.id, id)).returning();
     return user;
   }
 

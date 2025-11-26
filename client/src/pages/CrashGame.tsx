@@ -35,6 +35,71 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>(0);
 
+  // Define mutations first (before they're used in callbacks)
+  const startMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const response = await apiRequest("POST", "/api/games/crash/start", {
+        odejs: user?.id || "demo",
+        amount,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setCrashPoint(data.crashPoint);
+      if (data.newBalance !== undefined) {
+        onBalanceChange(data.newBalance);
+      }
+      startTimeRef.current = Date.now();
+      setGameStatus("running");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to start game. Please try again.",
+        variant: "destructive",
+      });
+      setGameStatus("waiting");
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+  });
+
+  const cashoutMutation = useMutation({
+    mutationFn: async ({ betAmt, mult }: { betAmt: number; mult: number }) => {
+      const response = await apiRequest("POST", "/api/games/crash/cashout", {
+        odejs: user?.id || "demo",
+        betAmount: betAmt,
+        multiplier: mult,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.newBalance !== undefined) {
+        onBalanceChange(data.newBalance);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+  });
+
+  const crashedMutation = useMutation({
+    mutationFn: async ({ betAmt, crash }: { betAmt: number; crash: number }) => {
+      const response = await apiRequest("POST", "/api/games/crash/crashed", {
+        odejs: user?.id || "demo",
+        betAmount: betAmt,
+        crashPoint: crash,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+  });
+
   const drawGraph = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -122,6 +187,8 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
       
       if (!hasCashedOut && betAmount > 0) {
         setHistory(prev => [crashPoint, ...prev.slice(0, 7)]);
+        // Record lost bet on backend
+        crashedMutation.mutate({ betAmt: betAmount, crash: crashPoint });
       }
       
       setTimeout(() => {
@@ -136,7 +203,7 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
     }
 
     animationRef.current = requestAnimationFrame(runGame);
-  }, [gameStatus, crashPoint, hasCashedOut, betAmount, hapticFeedback, drawGraph, queryClient]);
+  }, [gameStatus, crashPoint, hasCashedOut, betAmount, hapticFeedback, drawGraph, queryClient, crashedMutation]);
 
   useEffect(() => {
     if (gameStatus === "running") {
@@ -153,35 +220,10 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
     drawGraph();
   }, [drawGraph]);
 
-  const startMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      const response = await apiRequest("POST", "/api/games/crash/start", {
-        odejs: user?.id || "demo",
-        amount,
-      });
-      return response.json();
-    },
-    onSuccess: (data, amount) => {
-      setCrashPoint(data.crashPoint);
-      startTimeRef.current = Date.now();
-      setGameStatus("running");
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to start game. Please try again.",
-        variant: "destructive",
-      });
-      setGameStatus("waiting");
-      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
-    },
-  });
-
   const placeBet = (amount: number) => {
     if (gameStatus !== "waiting") return;
     
     setBetAmount(amount);
-    onBalanceChange(balance - amount);
     setGameStatus("betting");
     hapticFeedback("medium");
 
@@ -195,14 +237,15 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
     
     setHasCashedOut(true);
     setCashOutMultiplier(multiplier);
-    const winnings = betAmount * multiplier;
-    onBalanceChange(balance + winnings);
     hapticFeedback("heavy");
     setHistory(prev => [multiplier, ...prev.slice(0, 7)]);
     
+    // Save cashout to backend
+    cashoutMutation.mutate({ betAmt: betAmount, mult: multiplier });
+    
     toast({
       title: "Cashed Out!",
-      description: `+$${winnings.toFixed(2)} at ${multiplier.toFixed(2)}x`,
+      description: `+$${(betAmount * multiplier).toFixed(2)} at ${multiplier.toFixed(2)}x`,
     });
   };
 

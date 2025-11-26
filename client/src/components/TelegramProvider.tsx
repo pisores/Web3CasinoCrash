@@ -175,7 +175,7 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
     }
   }, []);
 
-  // Sync user with backend
+  // Sync user with backend - auto-refresh every 10 seconds for balance sync
   const { data: user, isLoading: userLoading, refetch: refetchUser } = useQuery<User>({
     queryKey: ["/api/users/telegram", telegramUser?.id],
     queryFn: async () => {
@@ -190,7 +190,9 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
       return response.json();
     },
     enabled: !!telegramUser && isReady,
-    staleTime: 30000,
+    staleTime: 5000, // Consider stale after 5 seconds
+    refetchInterval: 10000, // Auto-refresh every 10 seconds for balance sync
+    refetchOnWindowFocus: true, // Refresh when user returns to app
   });
 
   // Send heartbeat to track user activity

@@ -295,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(gamesConfig);
   });
 
-  // Play Crash game
+  // Play Crash game - start and deduct bet
   app.post("/api/games/crash/start", async (req, res) => {
     try {
       const schema = z.object({
@@ -304,18 +304,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const data = schema.parse(req.body);
-      const crashPoint = generateCrashPoint();
+      
+      // Get user and validate balance
+      const user = await storage.getUser(data.odejs);
+      if (!user || user.balance < data.amount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+      
+      // Deduct bet amount immediately
+      const newBalance = user.balance - data.amount;
+      await storage.updateUserBalance(data.odejs, newBalance);
+      
+      // Check admin-controlled win rate to determine crash point
+      const playerShouldWin = await shouldPlayerWin();
+      let crashPoint: number;
+      
+      if (playerShouldWin) {
+        // Generate crash point between 1.5 and 10.0 for potential win
+        crashPoint = Math.floor((1.5 + Math.random() * 8.5) * 100) / 100;
+      } else {
+        // Generate low crash point (1.0 to 1.5)
+        crashPoint = Math.floor((1.0 + Math.random() * 0.5) * 100) / 100;
+      }
       
       res.json({
         crashPoint,
         gameId: `crash_${Date.now()}`,
+        newBalance,
       });
     } catch (error) {
       res.status(400).json({ error: "Invalid request" });
     }
   });
 
-  // Play Mines game
+  // Crash game - cashout
+  app.post("/api/games/crash/cashout", async (req, res) => {
+    try {
+      const schema = z.object({
+        odejs: z.string(),
+        betAmount: z.number().min(1),
+        multiplier: z.number().min(1),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      const user = await storage.getUser(data.odejs);
+      if (!user) {
+        return res.status(400).json({ error: "User not found" });
+      }
+      
+      const payout = data.betAmount * data.multiplier;
+      const newBalance = user.balance + payout;
+      await storage.updateUserBalance(data.odejs, newBalance);
+      
+      // Record bet
+      await storage.createBet({
+        odejs: data.odejs,
+        gameType: "crash",
+        amount: data.betAmount,
+        multiplier: data.multiplier,
+        payout,
+        isWin: true,
+        gameData: JSON.stringify({ multiplier: data.multiplier }),
+      });
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "crash", data.betAmount, payout, true);
+      
+      res.json({ success: true, payout, newBalance });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid request" });
+    }
+  });
+
+  // Crash game - crashed (lost)
+  app.post("/api/games/crash/crashed", async (req, res) => {
+    try {
+      const schema = z.object({
+        odejs: z.string(),
+        betAmount: z.number().min(1),
+        crashPoint: z.number(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      // Record losing bet
+      await storage.createBet({
+        odejs: data.odejs,
+        gameType: "crash",
+        amount: data.betAmount,
+        multiplier: 0,
+        payout: 0,
+        isWin: false,
+        gameData: JSON.stringify({ crashPoint: data.crashPoint }),
+      });
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "crash", data.betAmount, 0, false);
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid request" });
+    }
+  });
+
+  // Play Mines game - start and deduct bet
   app.post("/api/games/mines/start", async (req, res) => {
     try {
       const schema = z.object({
@@ -325,12 +418,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const data = schema.parse(req.body);
+      
+      // Get user and validate balance
+      const user = await storage.getUser(data.odejs);
+      if (!user || user.balance < data.amount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+      
+      // Deduct bet amount immediately
+      const newBalance = user.balance - data.amount;
+      await storage.updateUserBalance(data.odejs, newBalance);
+      
       const minePositions = generateMinePositions(25, data.minesCount);
       
       res.json({
         gameId: `mines_${Date.now()}`,
-        minePositions, // In production, this would be hidden
+        minePositions,
+        newBalance,
       });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid request" });
+    }
+  });
+
+  // Mines game - cashout
+  app.post("/api/games/mines/cashout", async (req, res) => {
+    try {
+      const schema = z.object({
+        odejs: z.string(),
+        betAmount: z.number().min(1),
+        multiplier: z.number().min(1),
+        revealedCount: z.number().min(1),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      const user = await storage.getUser(data.odejs);
+      if (!user) {
+        return res.status(400).json({ error: "User not found" });
+      }
+      
+      const payout = data.betAmount * data.multiplier;
+      const newBalance = user.balance + payout;
+      await storage.updateUserBalance(data.odejs, newBalance);
+      
+      // Record bet
+      await storage.createBet({
+        odejs: data.odejs,
+        gameType: "mines",
+        amount: data.betAmount,
+        multiplier: data.multiplier,
+        payout,
+        isWin: true,
+        gameData: JSON.stringify({ revealed: data.revealedCount, multiplier: data.multiplier }),
+      });
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "mines", data.betAmount, payout, true);
+      
+      res.json({ success: true, payout, newBalance });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid request" });
+    }
+  });
+
+  // Mines game - hit mine (lost)
+  app.post("/api/games/mines/lost", async (req, res) => {
+    try {
+      const schema = z.object({
+        odejs: z.string(),
+        betAmount: z.number().min(1),
+        revealedCount: z.number(),
+      });
+      
+      const data = schema.parse(req.body);
+      
+      // Record losing bet
+      await storage.createBet({
+        odejs: data.odejs,
+        gameType: "mines",
+        amount: data.betAmount,
+        multiplier: 0,
+        payout: 0,
+        isWin: false,
+        gameData: JSON.stringify({ revealed: data.revealedCount }),
+      });
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "mines", data.betAmount, 0, false);
+      
+      res.json({ success: true });
     } catch (error) {
       res.status(400).json({ error: "Invalid request" });
     }
@@ -997,6 +1174,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       res.status(400).json({ error: "Failed to update balance" });
+    }
+  });
+
+  // Toggle admin status for a user
+  app.post("/api/admin/users/:id/admin", checkAdmin, async (req, res) => {
+    try {
+      const { isAdmin } = req.body;
+      const user = await storage.updateUserAdmin(req.params.id, isAdmin);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update admin status" });
     }
   });
 

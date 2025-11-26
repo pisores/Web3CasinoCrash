@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Settings, Users, Wallet, CheckCircle, XCircle, RefreshCw, Ticket, Plus, History, Gamepad2, Clock, Eye } from "lucide-react";
+import { ArrowLeft, Settings, Users, Wallet, CheckCircle, XCircle, RefreshCw, Ticket, Plus, History, Gamepad2, Clock, Eye, Shield } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -243,6 +243,28 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     },
     onError: (error: any) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleAdminMutation = useMutation({
+    mutationFn: async ({ odejs, isAdmin }: { odejs: string; isAdmin: boolean }) => {
+      const res = await fetch(`/api/admin/users/${odejs}/admin`, {
+        method: "POST",
+        headers: { ...adminHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ isAdmin }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ 
+        title: "Успешно", 
+        description: variables.isAdmin ? "Права администратора выданы" : "Права администратора отозваны" 
+      });
+    },
+    onError: () => {
+      toast({ title: "Ошибка", description: "Не удалось изменить статус", variant: "destructive" });
     },
   });
 
@@ -509,6 +531,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                               <span className="font-mono text-green-400">{u.balance.toFixed(2)}</span>
                               <Button size="sm" variant="ghost" onClick={() => { setEditingBalance(u.id); setNewBalance(u.balance.toString()); }} data-testid={`button-edit-balance-${u.id}`}>
                                 Edit
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant={u.isAdmin ? "default" : "outline"}
+                                className={u.isAdmin ? "bg-primary/20 text-primary" : ""}
+                                onClick={() => toggleAdminMutation.mutate({ odejs: u.id, isAdmin: !u.isAdmin })} 
+                                data-testid={`button-toggle-admin-${u.id}`}
+                              >
+                                <Shield className="w-4 h-4" />
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => setSelectedUser(u)} data-testid={`button-view-${u.id}`}>
                                 <Eye className="w-4 h-4" />

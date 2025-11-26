@@ -126,16 +126,21 @@ The app runs on port 5000 via `npm run dev`
 - Implemented referral system: generate codes, invite friends, earn $50 per referral
 - New users get $100 bonus when using referral code
 - Updated lobby design to pure black casino style
-- **NEW**: Admin-controlled win rate system - @nahalist can set win percentage for all games
-- **NEW**: Wallet integration - connect TON wallet, deposit, and request withdrawals
-- **NEW**: Admin panel for withdrawal approvals/rejections
-- **NEW**: All game logic now uses shouldPlayerWin() to respect admin win rate settings
+- Admin-controlled win rate system - @nahalist can set win percentage for all games
+- Wallet integration - connect TON wallet, deposit, and request withdrawals
+- Admin panel for withdrawal approvals/rejections
+- All game logic now uses shouldPlayerWin() to respect admin win rate settings
 - Fixed Dice game boundary validation for edge cases (targets 1-99/100)
-- **NEW**: Extended admin panel with tabs: Users, Withdrawals, Games History, Promo Codes, Settings
-- **NEW**: Active users tracking (online/today) with lastSeenAt timestamps
-- **NEW**: User detail view showing bet history and withdrawal history
-- **NEW**: Heartbeat system tracks user activity every 60 seconds
-- **NEW**: Deposit tab in Wallet showing TON address UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs
+- Extended admin panel with tabs: Users, Withdrawals, Games History, Promo Codes, Settings
+- Active users tracking (online/today) with lastSeenAt timestamps
+- User detail view showing bet history and withdrawal history
+- Heartbeat system tracks user activity every 60 seconds
+- Deposit tab with TON address: UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs
+- **FIX**: Critical balance synchronization fixed - Crash and Mines now save to database via cashout/crashed endpoints
+- **NEW**: USDT TRC20 deposit address: TPG3UTHzvGbwEzGkA9xkY5stFVzmqV2rwG
+- **NEW**: Automatic balance sync every 10 seconds prevents stale frontend data
+- **NEW**: Admin privilege management - grant/revoke admin rights via `/api/admin/users/:id/admin`
+- **NEW**: Withdrawal network selection displayed in UI (TON, TRC20, ERC20, BEP20)
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)

@@ -10,7 +10,8 @@ import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const DEPOSIT_ADDRESS = "UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs";
+const DEPOSIT_ADDRESS_TON = "UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs";
+const DEPOSIT_ADDRESS_TRC20 = "TPG3UTHzvGbwEzGkA9xkY5stFVzmqV2rwG";
 
 interface WalletPageProps {
   balance: number;
@@ -316,23 +317,49 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Отправьте TON/USDT на этот адрес для пополнения баланса
+                  Отправьте криптовалюту на один из адресов для пополнения
                 </p>
                 
+                {/* TON Address */}
                 <div className="p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
-                  <p className="text-xs text-muted-foreground mb-2">TON кошелёк для пополнения:</p>
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                    <span className="text-lg">💎</span> TON Network:
+                  </p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs font-mono bg-background/50 p-2 rounded break-all" data-testid="text-deposit-address">
-                      {DEPOSIT_ADDRESS}
+                    <code className="flex-1 text-xs font-mono bg-background/50 p-2 rounded break-all" data-testid="text-deposit-address-ton">
+                      {DEPOSIT_ADDRESS_TON}
                     </code>
                     <Button
                       size="icon"
                       variant="outline"
                       onClick={() => {
-                        navigator.clipboard.writeText(DEPOSIT_ADDRESS);
-                        toast({ title: "Скопировано!", description: "Адрес скопирован в буфер обмена" });
+                        navigator.clipboard.writeText(DEPOSIT_ADDRESS_TON);
+                        toast({ title: "Скопировано!", description: "TON адрес скопирован" });
                       }}
-                      data-testid="button-copy-address"
+                      data-testid="button-copy-address-ton"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* USDT TRC20 Address */}
+                <div className="p-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-lg border border-red-500/20">
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                    <span className="text-lg">🔴</span> USDT TRC20 (Tron):
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-background/50 p-2 rounded break-all" data-testid="text-deposit-address-trc20">
+                      {DEPOSIT_ADDRESS_TRC20}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(DEPOSIT_ADDRESS_TRC20);
+                        toast({ title: "Скопировано!", description: "TRC20 адрес скопирован" });
+                      }}
+                      data-testid="button-copy-address-trc20"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -342,7 +369,7 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
                 <div className="space-y-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                   <p className="text-sm font-medium text-yellow-400">Важно:</p>
                   <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>1. Отправьте TON или USDT на указанный адрес</li>
+                    <li>1. Выберите нужную сеть и отправьте криптовалюту</li>
                     <li>2. Укажите ваш Telegram ID в комментарии к переводу</li>
                     <li>3. Баланс будет пополнен в течение 5-10 минут</li>
                     <li>4. Минимальная сумма: 1 USDT</li>

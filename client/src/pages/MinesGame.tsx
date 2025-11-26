@@ -65,6 +65,9 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
       setIsPlaying(true);
       setIsGameOver(false);
       setIsWin(false);
+      if (data.newBalance !== undefined) {
+        onBalanceChange(data.newBalance);
+      }
     },
     onError: () => {
       toast({
@@ -76,9 +79,46 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
     },
   });
 
+  const cashoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/games/mines/cashout", {
+        odejs: user?.id || "demo",
+        betAmount,
+        multiplier: currentMultiplier,
+        revealedCount,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.newBalance !== undefined) {
+        onBalanceChange(data.newBalance);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+  });
+
+  const lostMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/games/mines/lost", {
+        odejs: user?.id || "demo",
+        betAmount,
+        revealedCount,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+    },
+  });
+
   const startGame = (amount: number) => {
     hapticFeedback("medium");
-    onBalanceChange(balance - amount);
     startMutation.mutate(amount);
   };
 
@@ -104,6 +144,8 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
         setIsGameOver(true);
         setIsWin(false);
         setIsPlaying(false);
+        // Record lost bet on backend
+        lostMutation.mutate();
         queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
       } else {
         hapticFeedback("light");
@@ -116,17 +158,16 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
         setCurrentMultiplier(data.multiplier);
         
         if (newRevealed === GRID_SIZE - minesCount) {
-          const winnings = betAmount * data.multiplier;
-          onBalanceChange(balance + winnings);
           setIsGameOver(true);
           setIsWin(true);
           setIsPlaying(false);
           hapticFeedback("heavy");
+          // Auto-cashout on full clear
+          cashoutMutation.mutate();
           toast({
             title: "You Won!",
-            description: `+$${winnings.toFixed(2)}`,
+            description: `+$${(betAmount * data.multiplier).toFixed(2)}`,
           });
-          queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
         }
       }
     },
@@ -148,8 +189,6 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
     if (!isPlaying || revealedCount === 0) return;
     
     hapticFeedback("heavy");
-    const winnings = betAmount * currentMultiplier;
-    onBalanceChange(balance + winnings);
     
     const newCells = [...cells];
     minePositions.forEach((pos) => {
@@ -163,12 +202,13 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
     setIsWin(true);
     setIsPlaying(false);
     
+    // Save cashout to backend
+    cashoutMutation.mutate();
+    
     toast({
       title: "Cashed Out!",
-      description: `+$${winnings.toFixed(2)} at ${currentMultiplier.toFixed(2)}x`,
+      description: `+$${(betAmount * currentMultiplier).toFixed(2)} at ${currentMultiplier.toFixed(2)}x`,
     });
-    
-    queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
   };
 
   const resetGame = () => {
