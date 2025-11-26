@@ -4,9 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
-import { AudioControls } from "@/components/AudioControls";
 import { useTelegram } from "@/components/TelegramProvider";
-import { useAudio } from "@/components/AudioProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
 
@@ -199,7 +197,6 @@ export function PokerTable({
   onBalanceChange,
 }: PokerTableProps) {
   const { user, hapticFeedback } = useTelegram();
-  const { playSound } = useAudio();
   const { toast } = useToast();
 
   const [gameState, setGameState] = useState<PokerGameState | null>(null);
@@ -239,19 +236,6 @@ export function PokerTable({
         }
       }
 
-      if (data.type === "deal_cards") {
-        playSound("reveal");
-      }
-
-      if (data.type === "action") {
-        if (data.action === "fold") playSound("click");
-        else if (data.action === "bet" || data.action === "raise") playSound("bet");
-        else playSound("click");
-      }
-
-      if (data.type === "showdown") {
-        playSound("win");
-      }
     };
 
     ws.onclose = () => {
@@ -261,7 +245,7 @@ export function PokerTable({
     return () => {
       ws.close();
     };
-  }, [tableId, user?.id, playSound]);
+  }, [tableId, user?.id]);
 
   const sendAction = useCallback((action: PokerAction, amount?: number) => {
     if (!wsRef.current || !isMyTurn) return;
@@ -300,7 +284,7 @@ export function PokerTable({
       setChipStack(buyInAmount);
       onBalanceChange(balance - buyInAmount);
       setShowBuyIn(false);
-      playSound("bet");
+      hapticFeedback("medium");
     } catch (error) {
       toast({ title: "Ошибка", description: "Не удалось сесть за стол", variant: "destructive" });
     }
