@@ -43,6 +43,7 @@ interface TelegramContextType {
   hideMainButton: () => void;
   setMainButtonLoading: (loading: boolean) => void;
   shareGameResult: (text: string) => void;
+  switchDevAccount: (username: string) => void;
 }
 
 const defaultTheme: TelegramTheme = {
@@ -76,6 +77,7 @@ const TelegramContext = createContext<TelegramContextType>({
   hideMainButton: () => {},
   setMainButtonLoading: () => {},
   shareGameResult: () => {},
+  switchDevAccount: () => {},
 });
 
 export function useTelegram() {
@@ -145,13 +147,27 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
         tg.offEvent("themeChanged", updateTheme);
       };
     } else {
-      // Development mode - demo user
-      setTelegramUser({
-        id: 123456789,
-        first_name: "Admin",
-        last_name: "",
-        username: "nahalist",
-      });
+      // Development mode - check localStorage for saved dev account
+      const savedUsername = localStorage.getItem("dev_telegram_username");
+      const savedName = localStorage.getItem("dev_telegram_name");
+      
+      if (savedUsername) {
+        // Use saved dev account
+        setTelegramUser({
+          id: Math.abs(savedUsername.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 12345),
+          first_name: savedName || savedUsername,
+          last_name: "",
+          username: savedUsername,
+        });
+      } else {
+        // Default to admin account
+        setTelegramUser({
+          id: 123456789,
+          first_name: "Admin",
+          last_name: "",
+          username: "nahalist",
+        });
+      }
       // Force dark mode in demo
       document.documentElement.classList.add("dark");
       document.documentElement.classList.remove("light");
@@ -308,6 +324,35 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
     }
   };
 
+  const switchDevAccount = (username: string) => {
+    if (isTelegram) return; // Only works in dev mode
+    
+    if (!username.trim()) {
+      // Clear and reset to admin
+      localStorage.removeItem("dev_telegram_username");
+      localStorage.removeItem("dev_telegram_name");
+      setTelegramUser({
+        id: 123456789,
+        first_name: "Admin",
+        last_name: "",
+        username: "nahalist",
+      });
+    } else {
+      // Set new dev account
+      const cleanUsername = username.replace("@", "").trim();
+      localStorage.setItem("dev_telegram_username", cleanUsername);
+      localStorage.setItem("dev_telegram_name", cleanUsername);
+      setTelegramUser({
+        id: Math.abs(cleanUsername.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 12345),
+        first_name: cleanUsername,
+        last_name: "",
+        username: cleanUsername,
+      });
+    }
+    // Invalidate user query to force refetch
+    queryClient.invalidateQueries({ queryKey: ["/api/users/telegram"] });
+  };
+
   return (
     <TelegramContext.Provider
       value={{
@@ -330,6 +375,7 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
         hideMainButton,
         setMainButtonLoading,
         shareGameResult,
+        switchDevAccount,
       }}
     >
       {children}

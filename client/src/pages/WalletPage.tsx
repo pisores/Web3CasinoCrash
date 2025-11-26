@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Wallet, ArrowUpRight, Gift, CheckCircle, Clock, XCircle, Ticket, Copy, ArrowDownLeft } from "lucide-react";
+import { ArrowLeft, Wallet, ArrowUpRight, Gift, CheckCircle, Clock, XCircle, Ticket, Copy, ArrowDownLeft, Shield, User } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -20,18 +20,25 @@ interface WalletPageProps {
 
 interface Withdrawal {
   id: string;
+  odejs: string;
   amount: number;
   walletAddress: string;
   status: string;
   createdAt: string;
+  user?: {
+    username: string;
+    firstName: string;
+  };
 }
 
 export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps) {
-  const { user, refetchUser } = useTelegram();
+  const { user, refetchUser, telegramUser } = useTelegram();
   const { toast } = useToast();
   const [promoCode, setPromoCode] = useState("");
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+
+  const isAdmin = telegramUser?.username === "nahalist" || user?.isAdmin;
 
   const { data: withdrawals } = useQuery<Withdrawal[]>({
     queryKey: ["/api/wallet/withdrawals", user?.id],
@@ -40,6 +47,52 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
       return res.json();
     },
     enabled: !!user?.id,
+  });
+
+  // Admin: fetch all pending withdrawals
+  const { data: pendingWithdrawals, refetch: refetchPending } = useQuery<Withdrawal[]>({
+    queryKey: ["/api/admin/withdrawals/pending"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/withdrawals", {
+        headers: { "x-admin-id": user?.id?.toString() || "" },
+      });
+      return res.json();
+    },
+    enabled: Boolean(user?.id && isAdmin),
+  });
+
+  // Admin: process withdrawal (API expects "status" field with "approved" or "rejected")
+  const processWithdrawalMutation = useMutation({
+    mutationFn: async ({ withdrawalId, action }: { withdrawalId: string; action: "approve" | "reject" }) => {
+      const status = action === "approve" ? "approved" : "rejected";
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/process`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-admin-id": user?.id?.toString() || "",
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Ошибка");
+      }
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      refetchPending();
+      toast({ 
+        title: variables.action === "approve" ? "Одобрено" : "Отклонено",
+        description: `Заявка на вывод ${variables.action === "approve" ? "одобрена" : "отклонена"}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
   });
 
   const applyPromoMutation = useMutation({
@@ -138,8 +191,19 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="deposit">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue={isAdmin ? "requests" : "deposit"}>
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
+            {isAdmin && (
+              <TabsTrigger value="requests" data-testid="tab-requests" className="relative">
+                <Shield className="w-4 h-4 mr-1" />
+                Заявки
+                {pendingWithdrawals && pendingWithdrawals.filter(w => w.status === "pending").length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingWithdrawals.filter(w => w.status === "pending").length}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="deposit" data-testid="tab-deposit">
               <ArrowDownLeft className="w-4 h-4 mr-1" />
               Пополнить
@@ -153,6 +217,85 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
               Вывести
             </TabsTrigger>
           </TabsList>
+          
+          {isAdmin && (
+            <TabsContent value="requests">
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Shield className="w-5 h-5 text-primary" />
+                    Заявки на вывод
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {!pendingWithdrawals || pendingWithdrawals.filter(w => w.status === "pending").length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>Нет активных заявок</p>
+                    </div>
+                  ) : (
+                    pendingWithdrawals
+                      .filter(w => w.status === "pending")
+                      .map((w) => (
+                        <div
+                          key={w.id}
+                          className="p-4 bg-muted/30 rounded-lg border border-border space-y-3"
+                          data-testid={`pending-withdrawal-${w.id}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {w.user?.firstName || "Пользователь"} 
+                                  {w.user?.username && <span className="text-muted-foreground ml-1">@{w.user.username}</span>}
+                                </span>
+                              </div>
+                              <p className="text-2xl font-bold text-primary">{w.amount.toFixed(2)} USDT</p>
+                            </div>
+                            <Badge className="bg-yellow-500/20 text-yellow-400">
+                              <Clock className="w-3 h-3 mr-1" /> Ожидание
+                            </Badge>
+                          </div>
+                          
+                          <div className="p-2 bg-background/50 rounded border">
+                            <p className="text-xs text-muted-foreground mb-1">Адрес вывода:</p>
+                            <code className="text-xs font-mono break-all">{w.walletAddress}</code>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              className="flex-1"
+                              variant="default"
+                              onClick={() => processWithdrawalMutation.mutate({ withdrawalId: w.id, action: "approve" })}
+                              disabled={processWithdrawalMutation.isPending}
+                              data-testid={`button-approve-${w.id}`}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Одобрить
+                            </Button>
+                            <Button
+                              className="flex-1"
+                              variant="destructive"
+                              onClick={() => processWithdrawalMutation.mutate({ withdrawalId: w.id, action: "reject" })}
+                              disabled={processWithdrawalMutation.isPending}
+                              data-testid={`button-reject-${w.id}`}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Отклонить
+                            </Button>
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground">
+                            Создано: {new Date(w.createdAt).toLocaleString("ru-RU")}
+                          </p>
+                        </div>
+                      ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
           
           <TabsContent value="deposit">
             <Card>

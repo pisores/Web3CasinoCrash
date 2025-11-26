@@ -911,7 +911,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/withdrawals", checkAdmin, async (req, res) => {
     try {
       const pendingWithdrawals = await storage.getPendingWithdrawals();
-      res.json(pendingWithdrawals);
+      
+      // Enrich with user data
+      const withdrawalsWithUsers = await Promise.all(
+        pendingWithdrawals.map(async (w) => {
+          const user = await storage.getUser(w.odejs);
+          return {
+            ...w,
+            user: user ? {
+              username: user.username,
+              firstName: user.firstName,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(withdrawalsWithUsers);
     } catch (error) {
       res.status(400).json({ error: "Failed to get withdrawals" });
     }

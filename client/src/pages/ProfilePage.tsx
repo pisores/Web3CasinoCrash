@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Copy, Users, Gift, Share2, Settings, Shield } from "lucide-react";
+import { ArrowLeft, Copy, Users, Gift, Share2, Settings, Shield, LogOut, UserCircle } from "lucide-react";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 
 interface ProfilePageProps {
@@ -16,11 +16,12 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ balance, onBack, onOpenAdmin }: ProfilePageProps) {
-  const { user, hapticFeedback, shareGameResult, telegramUser } = useTelegram();
+  const { user, hapticFeedback, shareGameResult, telegramUser, isTelegram, switchDevAccount } = useTelegram();
   const isAdmin = user?.username === "nahalist" || user?.isAdmin;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [referralInput, setReferralInput] = useState("");
+  const [devUsername, setDevUsername] = useState("");
 
   const { data: referralStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/users", user?.id, "referral-stats"],
@@ -150,6 +151,73 @@ export function ProfilePage({ balance, onBack, onOpenAdmin }: ProfilePageProps) 
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2">
                 Управление казино, пользователями и настройками
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Dev Mode: Switch Account - only visible in dev mode (not in Telegram) */}
+        {!isTelegram && (
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <UserCircle className="w-5 h-5 text-yellow-500" />
+                Dev Mode: Сменить аккаунт
+              </CardTitle>
+              <CardDescription>
+                Войти под другим Telegram username для тестирования
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="@username"
+                  value={devUsername}
+                  onChange={(e) => setDevUsername(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-dev-username"
+                />
+                <Button
+                  onClick={() => {
+                    if (devUsername.trim()) {
+                      switchDevAccount(devUsername);
+                      toast({
+                        title: "Аккаунт изменён",
+                        description: `Теперь вы вошли как @${devUsername.replace("@", "")}`,
+                      });
+                      setDevUsername("");
+                      onBack();
+                    }
+                  }}
+                  disabled={!devUsername.trim()}
+                  data-testid="button-switch-account"
+                >
+                  Войти
+                </Button>
+              </div>
+              
+              {telegramUser?.username !== "nahalist" && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    switchDevAccount("");
+                    toast({
+                      title: "Вернулись к админу",
+                      description: "Теперь вы вошли как @nahalist",
+                    });
+                    onBack();
+                  }}
+                  data-testid="button-switch-to-admin"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Вернуться к @nahalist (Admin)
+                </Button>
+              )}
+              
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                Этот раздел виден только в режиме разработки. 
+                В Telegram будет использоваться реальный аккаунт.
               </p>
             </CardContent>
           </Card>
