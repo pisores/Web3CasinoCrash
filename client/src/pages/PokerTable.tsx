@@ -7,7 +7,6 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { useTelegram } from "@/components/TelegramProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
-import pokerTableImage from "@assets/generated_images/green_oval_poker_table_papapoker.png";
 import pokerBgImage from "@assets/generated_images/dark_water_texture_background.png";
 
 interface PokerTableProps {
@@ -77,24 +76,24 @@ interface PlayerSeatProps {
 
 function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, playersCount }: PlayerSeatProps) {
   const positions6 = [
-    { top: "85%", left: "50%", transform: "translate(-50%, -50%)" },
-    { top: "65%", left: "5%", transform: "translate(0, -50%)" },
-    { top: "20%", left: "5%", transform: "translate(0, -50%)" },
-    { top: "5%", left: "50%", transform: "translate(-50%, 0)" },
-    { top: "20%", right: "5%", left: "auto", transform: "translate(0, -50%)" },
-    { top: "65%", right: "5%", left: "auto", transform: "translate(0, -50%)" },
+    { bottom: "2%", left: "50%", transform: "translate(-50%, 0)" },
+    { top: "65%", left: "0%", transform: "translate(-20%, -50%)" },
+    { top: "25%", left: "0%", transform: "translate(-20%, -50%)" },
+    { top: "5%", left: "50%", transform: "translate(-50%, -50%)" },
+    { top: "25%", right: "0%", left: "auto", transform: "translate(20%, -50%)" },
+    { top: "65%", right: "0%", left: "auto", transform: "translate(20%, -50%)" },
   ];
 
   const positions9 = [
-    { top: "88%", left: "50%", transform: "translate(-50%, -50%)" },
-    { top: "75%", left: "8%", transform: "translate(0, -50%)" },
-    { top: "45%", left: "2%", transform: "translate(0, -50%)" },
-    { top: "15%", left: "12%", transform: "translate(0, -50%)" },
-    { top: "3%", left: "50%", transform: "translate(-50%, 0)" },
-    { top: "15%", right: "12%", left: "auto", transform: "translate(0, -50%)" },
-    { top: "45%", right: "2%", left: "auto", transform: "translate(0, -50%)" },
-    { top: "75%", right: "8%", left: "auto", transform: "translate(0, -50%)" },
-    { top: "88%", right: "25%", left: "auto", transform: "translate(0, -50%)" },
+    { bottom: "2%", left: "50%", transform: "translate(-50%, 0)" },
+    { top: "75%", left: "0%", transform: "translate(-20%, -50%)" },
+    { top: "50%", left: "0%", transform: "translate(-30%, -50%)" },
+    { top: "25%", left: "0%", transform: "translate(-20%, -50%)" },
+    { top: "5%", left: "35%", transform: "translate(-50%, -50%)" },
+    { top: "5%", left: "65%", transform: "translate(-50%, -50%)" },
+    { top: "25%", right: "0%", left: "auto", transform: "translate(20%, -50%)" },
+    { top: "50%", right: "0%", left: "auto", transform: "translate(30%, -50%)" },
+    { top: "75%", right: "0%", left: "auto", transform: "translate(20%, -50%)" },
   ];
 
   const positionStyle = maxSeats <= 6 ? positions6[position] : positions9[position];
@@ -366,20 +365,45 @@ export function PokerTable({
 
       <main className="flex-1 relative overflow-hidden">
         <div 
-          className="absolute inset-0"
+          className="absolute inset-0 bg-black/40"
           style={{ 
             backgroundImage: `url(${pokerBgImage})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundPosition: 'center',
+            backgroundBlendMode: 'darken'
           }}
         />
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="relative w-full h-full max-w-md">
-            <img 
-              src={pokerTableImage} 
-              alt="Poker Table" 
-              className="w-full h-full object-contain drop-shadow-2xl"
-            />
+        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          <div className="relative w-full h-full max-w-sm">
+            <svg viewBox="0 0 200 320" className="w-full h-full drop-shadow-2xl">
+              <defs>
+                <linearGradient id="tableGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#2d8a4e" />
+                  <stop offset="50%" stopColor="#1e6b3a" />
+                  <stop offset="100%" stopColor="#165a2f" />
+                </linearGradient>
+                <linearGradient id="borderGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1a4a2e" />
+                  <stop offset="50%" stopColor="#0d3320" />
+                  <stop offset="100%" stopColor="#0a2818" />
+                </linearGradient>
+                <filter id="tableShadow">
+                  <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.5"/>
+                </filter>
+              </defs>
+              
+              <ellipse cx="100" cy="160" rx="95" ry="150" fill="url(#borderGradient)" filter="url(#tableShadow)" />
+              <ellipse cx="100" cy="160" rx="85" ry="140" fill="url(#tableGradient)" />
+              <ellipse cx="100" cy="160" rx="75" ry="125" fill="none" stroke="#2a7a45" strokeWidth="1" opacity="0.3" />
+              
+              <text x="100" y="155" textAnchor="middle" fill="#1a5a35" fontSize="14" fontWeight="bold" fontFamily="Arial, sans-serif" opacity="0.4">
+                PapaPoker
+              </text>
+              <text x="100" y="172" textAnchor="middle" fill="#1a5a35" fontSize="8" opacity="0.3">
+                TEXAS HOLD'EM
+              </text>
+            </svg>
 
             {gameState?.pot !== undefined && gameState.pot > 0 && (
               <div className="absolute top-[35%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
