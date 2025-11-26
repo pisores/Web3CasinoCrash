@@ -173,7 +173,7 @@ export function PlinkoGame({ balance, onBalanceChange, onBack }: PlinkoGameProps
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="page-plinko-game">
-      <GameHeader title="Plinko" balance={balance} onBack={onBack} />
+      <GameHeader title="Plinko" balance={balance} onBack={onBack} gameType="plinko" />
 
       <main className="flex-1 flex flex-col p-4 gap-4">
         <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">

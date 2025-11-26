@@ -31,22 +31,24 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
   const [cells, setCells] = useState<CellState[]>(Array(GRID_SIZE).fill("hidden"));
   const [minePositions, setMinePositions] = useState<number[]>([]);
   const [revealedCount, setRevealedCount] = useState(0);
-  const [currentMultiplier, setCurrentMultiplier] = useState(0.12);
+  const [currentMultiplier, setCurrentMultiplier] = useState(0.60); // Default 5 mines * 0.12
   const [isGameOver, setIsGameOver] = useState(false);
   const [isWin, setIsWin] = useState(false);
   const [gameId, setGameId] = useState("");
 
   const calculateMultiplier = useCallback((revealed: number, mines: number) => {
-    if (revealed === 0) return 0.12;
+    // Base multiplier depends on mines count: each mine adds +0.12
+    // 1 mine = 0.12, 2 mines = 0.24, 3 mines = 0.36, etc.
+    const baseMultiplier = 0.12 * mines;
     
-    // Progressive multiplier starting from 0.12
-    // With 1 mine: need ~10 opens to break even (1.0x)
-    // With more mines: fewer opens needed
-    const requiredOpens = Math.max(1, 11 - mines); // 1 mine = 10 opens, 5 mines = 6 opens, 10 mines = 1 open
-    const targetMultiplier = 1 / 0.12; // ~8.33x to reach 1.0 from 0.12
-    const factor = Math.pow(targetMultiplier, 1 / requiredOpens); // Growth factor per open
+    if (revealed === 0) return baseMultiplier;
     
-    const multiplier = 0.12 * Math.pow(factor, revealed);
+    // Progressive increase per revealed cell
+    // More mines = higher growth rate per reveal
+    const safeSpots = GRID_SIZE - mines;
+    const growthPerReveal = 0.12 + (mines * 0.05); // Growth rate increases with mines
+    
+    const multiplier = baseMultiplier + (revealed * growthPerReveal);
     return Math.floor(multiplier * 100) / 100; // Round to 2 decimal places
   }, []);
 
@@ -64,7 +66,7 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
       setMinePositions(data.minePositions);
       setCells(Array(GRID_SIZE).fill("hidden"));
       setRevealedCount(0);
-      setCurrentMultiplier(0.12);
+      setCurrentMultiplier(0.12 * minesCount); // Base multiplier: 0.12 per mine
       setBetAmount(amount);
       setIsPlaying(true);
       setIsGameOver(false);
@@ -229,7 +231,7 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="page-mines-game">
-      <GameHeader title="Mines" balance={balance} onBack={onBack} />
+      <GameHeader title="Mines" balance={balance} onBack={onBack} gameType="mines" />
 
       <main className="flex-1 flex flex-col p-4 gap-4">
         <div className="flex items-center justify-between bg-card border border-card-border rounded-xl p-3">

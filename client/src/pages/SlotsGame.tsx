@@ -105,7 +105,7 @@ export function SlotsGame({ balance, onBalanceChange, onBack }: SlotsGameProps) 
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="page-slots-game">
-      <GameHeader title="Slots" balance={balance} onBack={onBack} />
+      <GameHeader title="Slots" balance={balance} onBack={onBack} gameType="slots" />
 
       <main className="flex-1 flex flex-col p-4 gap-4">
         {/* Slot Machine */}

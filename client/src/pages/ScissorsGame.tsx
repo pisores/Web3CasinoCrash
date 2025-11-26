@@ -121,7 +121,7 @@ export function ScissorsGame({ balance, onBalanceChange, onBack }: ScissorsGameP
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="page-scissors-game">
-      <GameHeader title="Rock Paper Scissors" balance={balance} onBack={onBack} />
+      <GameHeader title="Rock Paper Scissors" balance={balance} onBack={onBack} gameType="scissors" />
 
       <main className="flex-1 flex flex-col p-4 gap-4">
         {/* History */}

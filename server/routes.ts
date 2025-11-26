@@ -62,16 +62,17 @@ function generateMinePositions(gridSize: number, minesCount: number): number[] {
 }
 
 function calculateMinesMultiplier(revealed: number, mines: number, gridSize: number = 25): number {
-  if (revealed === 0) return 0.12;
+  // Base multiplier depends on mines count: each mine adds +0.12
+  // 1 mine = 0.12, 2 mines = 0.24, 3 mines = 0.36, etc.
+  const baseMultiplier = 0.12 * mines;
   
-  // Progressive multiplier starting from 0.12
-  // With 1 mine: need ~10 opens to break even (1.0x)
-  // With more mines: fewer opens needed
-  const requiredOpens = Math.max(1, 11 - mines); // 1 mine = 10 opens, 5 mines = 6 opens, 10 mines = 1 open
-  const targetMultiplier = 1 / 0.12; // ~8.33x to reach 1.0 from 0.12
-  const factor = Math.pow(targetMultiplier, 1 / requiredOpens); // Growth factor per open
+  if (revealed === 0) return baseMultiplier;
   
-  const multiplier = 0.12 * Math.pow(factor, revealed);
+  // Progressive increase per revealed cell
+  // More mines = higher growth rate per reveal
+  const growthPerReveal = 0.12 + (mines * 0.05); // Growth rate increases with mines
+  
+  const multiplier = baseMultiplier + (revealed * growthPerReveal);
   return Math.floor(multiplier * 100) / 100; // Round to 2 decimal places
 }
 

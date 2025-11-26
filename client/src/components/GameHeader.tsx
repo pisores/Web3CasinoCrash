@@ -2,15 +2,18 @@ import { useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BalanceDisplay } from "./BalanceDisplay";
+import { AudioControls } from "./AudioControls";
 import { useTelegram } from "./TelegramProvider";
+import { GameType } from "@/hooks/use-game-audio";
 
 interface GameHeaderProps {
   title: string;
   balance: number;
   onBack: () => void;
+  gameType?: GameType;
 }
 
-export function GameHeader({ title, balance, onBack }: GameHeaderProps) {
+export function GameHeader({ title, balance, onBack, gameType = "lobby" }: GameHeaderProps) {
   const { hapticFeedback, showBackButton, hideBackButton, isTelegram } = useTelegram();
 
   useEffect(() => {
@@ -49,7 +52,10 @@ export function GameHeader({ title, balance, onBack }: GameHeaderProps) {
           )}
           <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         </div>
-        <BalanceDisplay balance={balance} />
+        <div className="flex items-center gap-2">
+          <AudioControls gameType={gameType} />
+          <BalanceDisplay balance={balance} />
+        </div>
       </div>
     </header>
   );

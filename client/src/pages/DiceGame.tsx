@@ -112,7 +112,7 @@ export function DiceGame({ balance, onBalanceChange, onBack }: DiceGameProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="page-dice-game">
-      <GameHeader title="Dice" balance={balance} onBack={onBack} />
+      <GameHeader title="Dice" balance={balance} onBack={onBack} gameType="dice" />
 
       <main className="flex-1 flex flex-col p-4 gap-4">
         {/* History */}

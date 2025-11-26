@@ -2,6 +2,7 @@ import { gamesConfig, type GameType } from "@shared/schema";
 import { GameCard } from "@/components/GameCard";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { LiveFeed, OnlineCounter } from "@/components/LiveFeed";
+import { AudioControls } from "@/components/AudioControls";
 import { useTelegram } from "@/components/TelegramProvider";
 import { Trophy, User, Gift, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
           {/* Online Counter & Balance */}
           <div className="flex items-center gap-2">
             <OnlineCounter />
+            <AudioControls gameType="lobby" />
             {isAdmin && (
               <Button
                 variant="ghost"
