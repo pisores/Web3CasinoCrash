@@ -47,7 +47,7 @@ function GameApp() {
   const balance = user?.balance ?? 1;
 
   if (currentScreen === "admin") {
-    return <AdminPanel />;
+    return <AdminPanel onBack={handleBack} />;
   }
 
   if (currentScreen === "wallet") {

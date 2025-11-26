@@ -27,6 +27,22 @@ async function broadcastBetResult(
   }
 }
 
+// Get current win rate from settings
+async function getWinRate(): Promise<number> {
+  try {
+    const currentSettings = await storage.getSettings();
+    return currentSettings.winRatePercent / 100; // Convert to decimal (e.g., 50 -> 0.5)
+  } catch {
+    return 0.5; // Default 50% win rate
+  }
+}
+
+// Check if player should win based on admin-controlled win rate
+async function shouldPlayerWin(): Promise<boolean> {
+  const winRate = await getWinRate();
+  return Math.random() < winRate;
+}
+
 // Game logic utilities
 function generateCrashPoint(): number {
   const houseEdge = 0.97;
@@ -368,7 +384,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
-      const roll = rollDice();
+      // Check admin-controlled win rate
+      const playerShouldWin = await shouldPlayerWin();
+      
+      // Generate roll that matches the desired outcome with safe boundary handling
+      let roll: number;
+      const safeTarget = Math.max(2, Math.min(98, data.target)); // Ensure valid range
+      
+      if (playerShouldWin) {
+        // Generate winning roll
+        if (data.isOver) {
+          const winRange = 100 - safeTarget;
+          roll = winRange > 0 ? Math.floor(Math.random() * winRange) + safeTarget + 1 : safeTarget + 1;
+        } else {
+          const winRange = safeTarget - 1;
+          roll = winRange > 0 ? Math.floor(Math.random() * winRange) + 1 : 1;
+        }
+      } else {
+        // Generate losing roll
+        if (data.isOver) {
+          roll = Math.floor(Math.random() * safeTarget) + 1;
+        } else {
+          const loseRange = 100 - safeTarget;
+          roll = loseRange > 0 ? Math.floor(Math.random() * loseRange) + safeTarget + 1 : 100;
+        }
+      }
+      
+      // Clamp roll to valid range
+      roll = Math.max(1, Math.min(100, roll));
+      
       const isWin = data.isOver ? roll > data.target : roll < data.target;
       const multiplier = calculateDiceMultiplier(data.target, data.isOver);
       const payout = isWin ? data.amount * multiplier : 0;
@@ -422,7 +466,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
-      const result = spinSlots();
+      // Check admin-controlled win rate
+      const playerShouldWin = await shouldPlayerWin();
+      
+      let result;
+      if (playerShouldWin) {
+        // Generate winning spin (at least two matching symbols)
+        const winSymbol = Math.floor(Math.random() * 6);
+        const symbols = [winSymbol, winSymbol, winSymbol]; // Triple match for guaranteed win
+        const multipliers = [2, 3, 4, 5, 10, 25];
+        result = { symbols, multiplier: multipliers[winSymbol] };
+      } else {
+        // Generate losing spin (all different symbols)
+        const s1 = Math.floor(Math.random() * 6);
+        let s2 = (s1 + 1 + Math.floor(Math.random() * 5)) % 6;
+        let s3 = (s2 + 1 + Math.floor(Math.random() * 4)) % 6;
+        if (s3 === s1) s3 = (s3 + 1) % 6;
+        result = { symbols: [s1, s2, s3], multiplier: 0 };
+      }
+      
       const isWin = result.multiplier > 0;
       const payout = isWin ? data.amount * result.multiplier : 0;
       
@@ -474,7 +536,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
-      const result = dropPlinkoBall(data.rows);
+      // Check admin-controlled win rate
+      const playerShouldWin = await shouldPlayerWin();
+      
+      const multipliers = getPlinkoMultipliers(data.rows);
+      const slots = data.rows + 1;
+      const center = Math.floor(slots / 2);
+      
+      let result;
+      if (playerShouldWin) {
+        // Generate winning result (edge position with high multiplier)
+        const edgePosition = Math.random() < 0.5 ? 0 : slots - 1;
+        const path = [];
+        for (let i = 0; i < data.rows; i++) {
+          path.push(edgePosition === 0 ? -1 : 1);
+        }
+        result = { path, finalPosition: edgePosition, multiplier: multipliers[edgePosition] };
+      } else {
+        // Generate losing result (center position with low multiplier)
+        const path = [];
+        for (let i = 0; i < data.rows; i++) {
+          path.push(Math.random() < 0.5 ? -1 : 1);
+        }
+        result = { path, finalPosition: center, multiplier: multipliers[center] };
+      }
+      
       const isWin = result.multiplier >= 1;
       const payout = data.amount * result.multiplier;
       
@@ -520,8 +606,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
-      const choices = ["rock", "paper", "scissors"] as const;
-      const computerChoice = choices[Math.floor(Math.random() * 3)];
+      // Check admin-controlled win rate
+      const playerShouldWin = await shouldPlayerWin();
+      
+      // Generate computer choice based on desired outcome
+      const winMap: Record<string, string> = { rock: "scissors", paper: "rock", scissors: "paper" };
+      const loseMap: Record<string, string> = { rock: "paper", paper: "scissors", scissors: "rock" };
+      
+      let computerChoice: string;
+      if (playerShouldWin) {
+        computerChoice = winMap[choice]; // Computer picks losing option
+      } else {
+        computerChoice = loseMap[choice]; // Computer picks winning option
+      }
       
       let result: "win" | "lose" | "draw";
       if (choice === computerChoice) {
@@ -582,6 +679,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
+      // Check admin-controlled win rate
+      const playerShouldWin = await shouldPlayerWin();
+      
       const turtles = ["red", "blue", "yellow"] as const;
       
       const raceProgress: Record<string, number> = {};
@@ -589,9 +689,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         raceProgress[t] = Math.random() * 30 + 70;
       });
       
-      const winner = turtles.reduce((a, b) => 
-        raceProgress[a] > raceProgress[b] ? a : b
-      );
+      // Override winner based on admin-controlled outcome
+      let winner: string;
+      if (playerShouldWin) {
+        winner = selectedTurtle;
+        // Make sure selected turtle has highest progress
+        raceProgress[selectedTurtle] = 100;
+      } else {
+        // Select any turtle except the player's choice
+        const otherTurtles = turtles.filter(t => t !== selectedTurtle);
+        winner = otherTurtles[Math.floor(Math.random() * otherTurtles.length)];
+        // Make sure winner has highest progress
+        raceProgress[winner] = 100;
+        raceProgress[selectedTurtle] = Math.min(raceProgress[selectedTurtle], 95);
+      }
       
       const isWin = winner === selectedTurtle;
       const multiplier = isWin ? 3 : 0;
@@ -739,18 +850,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== ADMIN ENDPOINTS =====
 
-  // Middleware to check admin
-  const checkAdmin = async (req: Request, res: Response, next: Function) => {
+  // Middleware to check admin - verifies user exists and has admin privileges
+  // Note: For production, implement Telegram initData HMAC verification
+  const checkAdmin = async (req: any, res: Response, next: Function) => {
     const adminId = req.headers["x-admin-id"] as string;
     if (!adminId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: "Unauthorized - Admin ID required" });
     }
     
     const admin = await storage.getUser(adminId);
-    if (!admin || !admin.isAdmin) {
+    if (!admin) {
+      return res.status(401).json({ error: "Unauthorized - User not found" });
+    }
+    
+    // Check if user is admin by isAdmin flag OR by username (nahalist is always admin)
+    const isAdminUser = admin.isAdmin || admin.username === "nahalist";
+    if (!isAdminUser) {
       return res.status(403).json({ error: "Forbidden - Admin access required" });
     }
     
+    // Attach admin user to request for use in route handlers
+    req.adminUser = admin;
     next();
   };
 

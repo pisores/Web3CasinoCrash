@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { ArrowLeft, Settings, Users, Wallet, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface Withdrawal {
@@ -38,7 +37,11 @@ interface AdminSettings {
   updatedBy: string | null;
 }
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  onBack: () => void;
+}
+
+export default function AdminPanel({ onBack }: AdminPanelProps) {
   const { user } = useTelegram();
   const { toast } = useToast();
   const [winRate, setWinRate] = useState<number>(50);
@@ -140,12 +143,10 @@ export default function AdminPanel() {
             <p className="text-muted-foreground mb-4">
               Только администратор @nahalist может получить доступ к этой панели
             </p>
-            <Link href="/">
-              <Button data-testid="button-back-home">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                На главную
-              </Button>
-            </Link>
+            <Button onClick={onBack} data-testid="button-back-home">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              На главную
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -157,11 +158,9 @@ export default function AdminPanel() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <h1 className="text-2xl font-bold">Панель администратора</h1>
           </div>
           <Badge variant="outline" className="bg-primary/10">
