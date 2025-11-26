@@ -31,19 +31,23 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
   const [cells, setCells] = useState<CellState[]>(Array(GRID_SIZE).fill("hidden"));
   const [minePositions, setMinePositions] = useState<number[]>([]);
   const [revealedCount, setRevealedCount] = useState(0);
-  const [currentMultiplier, setCurrentMultiplier] = useState(1.0);
+  const [currentMultiplier, setCurrentMultiplier] = useState(0.12);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isWin, setIsWin] = useState(false);
   const [gameId, setGameId] = useState("");
 
   const calculateMultiplier = useCallback((revealed: number, mines: number) => {
-    if (revealed === 0) return 1.0;
-    const safeSpots = GRID_SIZE - mines;
-    let multiplier = 1;
-    for (let i = 0; i < revealed; i++) {
-      multiplier *= safeSpots / (safeSpots - i);
-    }
-    return Math.floor(multiplier * 0.97 * 100) / 100;
+    if (revealed === 0) return 0.12;
+    
+    // Progressive multiplier starting from 0.12
+    // With 1 mine: need ~10 opens to break even (1.0x)
+    // With more mines: fewer opens needed
+    const requiredOpens = Math.max(1, 11 - mines); // 1 mine = 10 opens, 5 mines = 6 opens, 10 mines = 1 open
+    const targetMultiplier = 1 / 0.12; // ~8.33x to reach 1.0 from 0.12
+    const factor = Math.pow(targetMultiplier, 1 / requiredOpens); // Growth factor per open
+    
+    const multiplier = 0.12 * Math.pow(factor, revealed);
+    return Math.floor(multiplier * 100) / 100; // Round to 2 decimal places
   }, []);
 
   const startMutation = useMutation({
@@ -60,7 +64,7 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
       setMinePositions(data.minePositions);
       setCells(Array(GRID_SIZE).fill("hidden"));
       setRevealedCount(0);
-      setCurrentMultiplier(1.0);
+      setCurrentMultiplier(0.12);
       setBetAmount(amount);
       setIsPlaying(true);
       setIsGameOver(false);
@@ -215,7 +219,7 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
     setCells(Array(GRID_SIZE).fill("hidden"));
     setMinePositions([]);
     setRevealedCount(0);
-    setCurrentMultiplier(1.0);
+    setCurrentMultiplier(0.12);
     setBetAmount(0);
     setIsPlaying(false);
     setIsGameOver(false);

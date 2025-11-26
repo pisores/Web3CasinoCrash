@@ -179,9 +179,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       if (!res.ok) throw new Error("Failed to update");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, savedPercent) => {
+      // Immediately update local state with the saved value to prevent slider jump
+      setWinRate(savedPercent);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
-      toast({ title: "Успешно", description: "Процент выигрыша обновлён" });
+      toast({ title: "Успешно", description: `RTP установлен на ${savedPercent}%` });
     },
   });
 

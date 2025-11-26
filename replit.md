@@ -141,6 +141,9 @@ The app runs on port 5000 via `npm run dev`
 - **NEW**: Automatic balance sync every 10 seconds prevents stale frontend data
 - **NEW**: Admin privilege management - grant/revoke admin rights via `/api/admin/users/:id/admin`
 - **NEW**: Withdrawal network selection displayed in UI (TON, TRC20, ERC20, BEP20)
+- **FIX**: Mines multiplier now starts from 0.12x and progressively increases based on mines count
+- **FIX**: With 1 mine, player breaks even after ~10 revealed cells; more mines = faster break even
+- **FIX**: RTP slider now immediately saves position after update (no delay)
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)
