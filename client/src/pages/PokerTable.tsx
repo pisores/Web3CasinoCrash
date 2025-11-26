@@ -7,7 +7,8 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { useTelegram } from "@/components/TelegramProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
-import pokerTableImage from "@assets/generated_images/vertical_poker_table_dark_elegant_text.png";
+import pokerTableImage from "@assets/generated_images/green_oval_poker_table_papapoker.png";
+import pokerBgImage from "@assets/generated_images/dark_water_texture_background.png";
 
 interface PokerTableProps {
   tableId: string;
@@ -363,13 +364,21 @@ export function PokerTable({
         </div>
       </header>
 
-      <main className="flex-1 relative overflow-hidden bg-black">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-full h-full">
+      <main className="flex-1 relative overflow-hidden">
+        <div 
+          className="absolute inset-0"
+          style={{ 
+            backgroundImage: `url(${pokerBgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <div className="relative w-full h-full max-w-md">
             <img 
               src={pokerTableImage} 
               alt="Poker Table" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain drop-shadow-2xl"
             />
 
             {gameState?.pot !== undefined && gameState.pot > 0 && (
