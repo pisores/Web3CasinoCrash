@@ -6,8 +6,11 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByTelegramId(telegramId: string): Promise<User | undefined>;
+  getUserByReferralCode(referralCode: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserBalance(id: string, balance: number): Promise<User | undefined>;
+  updateUserReferralCode(id: string, referralCode: string): Promise<User | undefined>;
+  incrementReferralCount(id: string): Promise<User | undefined>;
   createBet(bet: InsertBet): Promise<Bet>;
   getUserBets(userId: string, limit?: number): Promise<Bet[]>;
   getRecentBets(limit?: number): Promise<Bet[]>;
@@ -24,6 +27,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.referralCode, referralCode));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
@@ -31,6 +39,19 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserBalance(id: string, balance: number): Promise<User | undefined> {
     const [user] = await db.update(users).set({ balance }).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async updateUserReferralCode(id: string, referralCode: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ referralCode }).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async incrementReferralCount(id: string): Promise<User | undefined> {
+    const currentUser = await this.getUser(id);
+    if (!currentUser) return undefined;
+    const newCount = (currentUser.referralCount || 0) + 1;
+    const [user] = await db.update(users).set({ referralCount: newCount }).where(eq(users.id, id)).returning();
     return user;
   }
 
@@ -67,12 +88,21 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.referralCode === referralCode,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = { 
       ...insertUser, 
       id,
       balance: insertUser.balance ?? 1000,
+      referralCode: null,
+      referredBy: null,
+      referralCount: 0,
     };
     this.users.set(id, user);
     return user;
@@ -83,6 +113,24 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     
     const updatedUser = { ...user, balance };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserReferralCode(id: string, referralCode: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, referralCode };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async incrementReferralCount(id: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, referralCount: (user.referralCount || 0) + 1 };
     this.users.set(id, updatedUser);
     return updatedUser;
   }

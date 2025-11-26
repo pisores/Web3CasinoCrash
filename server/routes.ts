@@ -162,6 +162,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate referral code for user
+  app.post("/api/users/:id/referral-code", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (user.referralCode) {
+        return res.json({ referralCode: user.referralCode });
+      }
+      
+      const code = `REF${user.telegramId.slice(-6).toUpperCase()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      const updatedUser = await storage.updateUserReferralCode(user.id, code);
+      
+      res.json({ referralCode: code, user: updatedUser });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to generate referral code" });
+    }
+  });
+
+  // Apply referral code
+  app.post("/api/users/:id/apply-referral", async (req, res) => {
+    try {
+      const schema = z.object({
+        referralCode: z.string(),
+      });
+      
+      const data = schema.parse(req.body);
+      const user = await storage.getUser(req.params.id);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (user.referredBy) {
+        return res.status(400).json({ error: "Already used a referral code" });
+      }
+      
+      const referrer = await storage.getUserByReferralCode(data.referralCode);
+      
+      if (!referrer) {
+        return res.status(404).json({ error: "Invalid referral code" });
+      }
+      
+      if (referrer.id === user.id) {
+        return res.status(400).json({ error: "Cannot use your own referral code" });
+      }
+      
+      // Give bonus to new user
+      const bonusAmount = 100;
+      const referrerBonus = 50;
+      
+      await storage.updateUserBalance(user.id, user.balance + bonusAmount);
+      await storage.updateUserBalance(referrer.id, referrer.balance + referrerBonus);
+      await storage.incrementReferralCount(referrer.id);
+      
+      // Update user's referredBy field
+      const updatedUser = await storage.getUser(user.id);
+      
+      res.json({ 
+        success: true, 
+        bonus: bonusAmount,
+        message: `You received $${bonusAmount} bonus!`,
+        user: updatedUser
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to apply referral code" });
+    }
+  });
+
+  // Get user referral stats
+  app.get("/api/users/:id/referral-stats", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({
+        referralCode: user.referralCode,
+        referralCount: user.referralCount || 0,
+        totalEarned: (user.referralCount || 0) * 50,
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get referral stats" });
+    }
+  });
+
   // Get games config
   app.get("/api/games", (req, res) => {
     res.json(gamesConfig);

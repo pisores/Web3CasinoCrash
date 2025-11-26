@@ -7,6 +7,7 @@ import { useTelegram } from "@/components/TelegramProvider";
 import { gamesConfig } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Share2 } from "lucide-react";
 
 interface TurtleRaceGameProps {
   balance: number;
@@ -24,7 +25,7 @@ const turtles: { id: TurtleColor; name: string; color: string; bgColor: string }
 
 export function TurtleRaceGame({ balance, onBalanceChange, onBack }: TurtleRaceGameProps) {
   const gameConfig = gamesConfig.find((g) => g.id === "turtle")!;
-  const { hapticFeedback, user } = useTelegram();
+  const { hapticFeedback, user, shareGameResult } = useTelegram();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -249,9 +250,24 @@ export function TurtleRaceGame({ balance, onBalanceChange, onBack }: TurtleRaceG
                   : `${winner.charAt(0).toUpperCase() + winner.slice(1)} turtle won!`}
               </p>
             </div>
-            <Button className="w-full h-12" onClick={resetGame} data-testid="button-play-again">
-              Race Again
-            </Button>
+            <div className="flex gap-3">
+              <Button className="flex-1 h-12" onClick={resetGame} data-testid="button-play-again">
+                Race Again
+              </Button>
+              {winner === selectedTurtle && (
+                <Button
+                  variant="secondary"
+                  className="h-12 px-4"
+                  onClick={() => {
+                    hapticFeedback("light");
+                    shareGameResult("I won at Turtle Race! My turtle came first. Play with me in Telegram Casino");
+                  }}
+                  data-testid="button-share"
+                >
+                  <Share2 className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <BettingPanel

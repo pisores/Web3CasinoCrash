@@ -37,6 +37,12 @@ interface TelegramContextType {
   close: () => void;
   updateBalance: (newBalance: number) => void;
   refetchUser: () => void;
+  showBackButton: (onClick: () => void) => void;
+  hideBackButton: () => void;
+  showMainButton: (text: string, onClick: () => void) => void;
+  hideMainButton: () => void;
+  setMainButtonLoading: (loading: boolean) => void;
+  shareGameResult: (text: string) => void;
 }
 
 const defaultTheme: TelegramTheme = {
@@ -64,6 +70,12 @@ const TelegramContext = createContext<TelegramContextType>({
   close: () => {},
   updateBalance: () => {},
   refetchUser: () => {},
+  showBackButton: () => {},
+  hideBackButton: () => {},
+  showMainButton: () => {},
+  hideMainButton: () => {},
+  setMainButtonLoading: () => {},
+  shareGameResult: () => {},
 });
 
 export function useTelegram() {
@@ -223,6 +235,62 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
     }
   };
 
+  const showBackButton = (onClick: () => void) => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.BackButton) {
+      tg.BackButton.show();
+      tg.BackButton.onClick(onClick);
+    }
+  };
+
+  const hideBackButton = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.BackButton) {
+      tg.BackButton.hide();
+      tg.BackButton.offClick();
+    }
+  };
+
+  const showMainButton = (text: string, onClick: () => void) => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.MainButton) {
+      tg.MainButton.setText(text);
+      tg.MainButton.show();
+      tg.MainButton.onClick(onClick);
+    }
+  };
+
+  const hideMainButton = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.MainButton) {
+      tg.MainButton.hide();
+      tg.MainButton.offClick();
+    }
+  };
+
+  const setMainButtonLoading = (loading: boolean) => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.MainButton) {
+      if (loading) {
+        tg.MainButton.showProgress();
+      } else {
+        tg.MainButton.hideProgress();
+      }
+    }
+  };
+
+  const shareGameResult = (text: string) => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.switchInlineQuery) {
+      tg.switchInlineQuery(text, ["users", "groups", "channels"]);
+    } else if (navigator.share) {
+      navigator.share({ text });
+    } else {
+      navigator.clipboard?.writeText(text);
+      showAlert("Result copied to clipboard!");
+    }
+  };
+
   return (
     <TelegramContext.Provider
       value={{
@@ -239,6 +307,12 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
         close,
         updateBalance,
         refetchUser: () => refetchUser(),
+        showBackButton,
+        hideBackButton,
+        showMainButton,
+        hideMainButton,
+        setMainButtonLoading,
+        shareGameResult,
       }}
     >
       {children}

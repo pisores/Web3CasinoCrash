@@ -12,6 +12,9 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   photoUrl: text("photo_url"),
   balance: real("balance").notNull().default(1000),
+  referralCode: text("referral_code").unique(),
+  referredBy: text("referred_by"),
+  referralCount: real("referral_count").default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({

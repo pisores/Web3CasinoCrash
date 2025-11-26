@@ -54,7 +54,7 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 7. **Turtle Race** - Bet on winning turtle (3x payout)
 
 ## Database Schema
-- **users**: id, telegramId, username, firstName, lastName, balance
+- **users**: id, telegramId, username, firstName, lastName, balance, referralCode, referredBy, referralCount
 - **bets**: id, userId, gameType, amount, multiplier, payout, isWin, gameData, createdAt
 
 ## API Endpoints
@@ -69,6 +69,9 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 - `POST /api/games/plinko/drop` - Drop Plinko ball
 - `POST /api/games/scissors/play` - Play Rock Paper Scissors
 - `POST /api/games/turtle/race` - Start Turtle Race
+- `POST /api/users/:id/referral-code` - Generate referral code
+- `POST /api/users/:id/apply-referral` - Apply referral code (get $100 bonus)
+- `GET /api/users/:id/referral-stats` - Get referral statistics
 
 ## Running the App
 The app runs on port 5000 via `npm run dev`
@@ -90,6 +93,10 @@ The app runs on port 5000 via `npm run dev`
 - Added 2 new games: Rock Paper Scissors and Turtle Race
 - Updated GameCard with vibrant game images from original Web3 Casino design
 - Updated gradients to match original casino aesthetic
+- Added Profile page with user info
+- Implemented referral system: generate codes, invite friends, earn $50 per referral
+- New users get $100 bonus when using referral code
+- Updated lobby design to pure black casino style
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)

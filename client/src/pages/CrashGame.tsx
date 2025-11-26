@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useTelegram } from "@/components/TelegramProvider";
 import { gamesConfig } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { Rocket, TrendingUp } from "lucide-react";
+import { Rocket, TrendingUp, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CrashGameProps {
@@ -19,7 +19,7 @@ type GameStatus = "waiting" | "betting" | "running" | "crashed";
 
 export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) {
   const gameConfig = gamesConfig.find((g) => g.id === "crash")!;
-  const { hapticFeedback, user } = useTelegram();
+  const { hapticFeedback, user, shareGameResult } = useTelegram();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   

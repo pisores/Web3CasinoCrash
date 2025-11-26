@@ -7,7 +7,7 @@ import { useTelegram } from "@/components/TelegramProvider";
 import { gamesConfig } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Hand, Scissors, FileText } from "lucide-react";
+import { Hand, Scissors, FileText, Share2 } from "lucide-react";
 
 interface ScissorsGameProps {
   balance: number;
@@ -26,7 +26,7 @@ const choices: { id: Choice; name: string; icon: typeof Hand; beats: Choice }[] 
 
 export function ScissorsGame({ balance, onBalanceChange, onBack }: ScissorsGameProps) {
   const gameConfig = gamesConfig.find((g) => g.id === "scissors")!;
-  const { hapticFeedback, user } = useTelegram();
+  const { hapticFeedback, user, shareGameResult } = useTelegram();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -244,9 +244,24 @@ export function ScissorsGame({ balance, onBalanceChange, onBack }: ScissorsGameP
         )}
 
         {result ? (
-          <Button className="w-full h-12" onClick={resetGame} data-testid="button-play-again">
-            Play Again
-          </Button>
+          <div className="flex gap-3">
+            <Button className="flex-1 h-12" onClick={resetGame} data-testid="button-play-again">
+              Play Again
+            </Button>
+            {result === "win" && (
+              <Button
+                variant="secondary"
+                className="h-12 px-4"
+                onClick={() => {
+                  hapticFeedback("light");
+                  shareGameResult("I won at Rock Paper Scissors! Play with me in Telegram Casino");
+                }}
+                data-testid="button-share"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         ) : (
           <BettingPanel
             balance={balance}

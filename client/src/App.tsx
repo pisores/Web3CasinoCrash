@@ -12,19 +12,22 @@ import { SlotsGame } from "@/pages/SlotsGame";
 import { PlinkoGame } from "@/pages/PlinkoGame";
 import { ScissorsGame } from "@/pages/ScissorsGame";
 import { TurtleRaceGame } from "@/pages/TurtleRaceGame";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { type GameType } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 
+type Screen = GameType | "profile" | null;
+
 function GameApp() {
   const { isReady, isLoading, user, updateBalance, refetchUser } = useTelegram();
-  const [currentGame, setCurrentGame] = useState<GameType | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<Screen>(null);
 
   const handleBalanceChange = (newBalance: number) => {
     updateBalance(Math.max(0, newBalance));
   };
 
   const handleBack = () => {
-    setCurrentGame(null);
+    setCurrentScreen(null);
     refetchUser();
   };
 
@@ -41,7 +44,16 @@ function GameApp() {
 
   const balance = user?.balance ?? 1000;
 
-  if (currentGame === "crash") {
+  if (currentScreen === "profile") {
+    return (
+      <ProfilePage
+        balance={balance}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  if (currentScreen === "crash") {
     return (
       <CrashGame
         balance={balance}
@@ -51,7 +63,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "mines") {
+  if (currentScreen === "mines") {
     return (
       <MinesGame
         balance={balance}
@@ -61,7 +73,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "dice") {
+  if (currentScreen === "dice") {
     return (
       <DiceGame
         balance={balance}
@@ -71,7 +83,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "slots") {
+  if (currentScreen === "slots") {
     return (
       <SlotsGame
         balance={balance}
@@ -81,7 +93,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "plinko") {
+  if (currentScreen === "plinko") {
     return (
       <PlinkoGame
         balance={balance}
@@ -91,7 +103,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "scissors") {
+  if (currentScreen === "scissors") {
     return (
       <ScissorsGame
         balance={balance}
@@ -101,7 +113,7 @@ function GameApp() {
     );
   }
 
-  if (currentGame === "turtle") {
+  if (currentScreen === "turtle") {
     return (
       <TurtleRaceGame
         balance={balance}
@@ -114,7 +126,8 @@ function GameApp() {
   return (
     <GameLobby
       balance={balance}
-      onSelectGame={(gameId) => setCurrentGame(gameId)}
+      onSelectGame={(gameId) => setCurrentScreen(gameId)}
+      onOpenProfile={() => setCurrentScreen("profile")}
     />
   );
 }
