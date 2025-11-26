@@ -1,0 +1,104 @@
+.expired-notice {
+	text-align: center;
+	padding: 2rem;
+	border: 1px solid #ebebeb;
+	border-radius: 0.25rem;
+	margin: 0.5rem;
+}
+
+.expired-notice>span {
+	font-size: 2.5rem;
+	font-weight: bold;
+	color: #FFF;
+}
+
+.expired-notice>p {
+	font-size: 1.5rem;
+}
+
+.show-counter {
+	padding: 0.5rem;
+}
+
+.show-counter .countdown-link {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	font-weight: 700;
+	font-size: 1.25rem;
+	line-height: 1.75rem;
+	padding: 0.5rem;
+	// border: 1px solid #ebebeb;
+	border-radius: 0.25rem;
+	text-decoration: none;
+	color: #FFF;
+}
+
+.show-counter .countdown {
+	line-height: 1.25rem;
+	padding: 0 0.75rem 0 0.75rem;
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+}
+
+.show-counter .countdown.danger {
+	color: #ff0000;
+}
+
+.show-counter .countdown>div {
+	font-family: 'Styrene A Web';
+	font-style: normal;
+	font-weight: 700;
+	font-size: 24px;
+	line-height: 28px;
+	color: #FFFFFF;
+	width: 90px;
+	height: 80px;
+	background-color: #3F3F4F;
+	border: 2.42373px solid #4A4A5F;
+	border-radius: 12.1186px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10px;
+}
+
+.show-counter .countdown.danger>div {
+	background: linear-gradient(48.57deg, #5A45D1 24.42%, #BA6AFF 88.19%);
+}
+
+.show-counter .countdown>span {
+	font-family: 'Styrene A Web';
+	font-style: normal;
+	font-weight: 700;
+	font-size: 20px;
+	line-height: 24px;
+	text-align: center;
+	text-transform: uppercase;
+	color: #FFFFFF;
+}
+
+.double-dot {
+	font-size: 50px;
+	margin: 0px;
+	margin-top: -48px;
+}
+
+@media screen and (max-width: 940px) {
+	.show-counter .countdown > div {
+		width: 45px;
+		height: 40px;
+		font-size: 14px;
+		line-height: 16px;
+	}
+	.show-counter .countdown > span {
+		font-size: 12px;
+		line-height: 14px;
+	}
+	.double-dot {
+		font-size: 30px;
+		margin-top: -30px;
+	}
+}

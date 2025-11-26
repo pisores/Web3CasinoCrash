@@ -1,0 +1,531 @@
+
+
+.DiceContainer-1>div:nth-child(1) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.DiceContainer-2>div:nth-child(1) {
+    right: 20px;
+    top: 20px;
+}
+
+.DiceContainer-2>div:nth-child(2) {
+    left: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-3>div:nth-child(1) {
+    right: 20px;
+    top: 20px;
+}
+
+.DiceContainer-3>div:nth-child(2) {
+    left: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-3>div:nth-child(3) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.DiceContainer-4>div:nth-child(1) {
+    right: 20px;
+    top: 20px;
+}
+
+.DiceContainer-4>div:nth-child(2) {
+    left: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-4>div:nth-child(3) {
+    left: 20px;
+    top: 20px;
+}
+
+.DiceContainer-4>div:nth-child(4) {
+    right: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-5>div:nth-child(1) {
+    right: 20px;
+    top: 20px;
+}
+
+.DiceContainer-5>div:nth-child(2) {
+    left: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-5>div:nth-child(3) {
+    left: 20px;
+    top: 20px;
+}
+
+.DiceContainer-5>div:nth-child(4) {
+    right: 20px;
+    bottom: 20px;
+}
+
+.DiceContainer-5>div:nth-child(5) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.DiceContainer-6>div:nth-child(1) {
+    right: 20px;
+    top: 16px;
+}
+
+.DiceContainer-6>div:nth-child(2) {
+    left: 20px;
+    bottom: 16px;
+}
+
+.DiceContainer-6>div:nth-child(3) {
+    left: 20px;
+    top: 16px;
+}
+
+.DiceContainer-6>div:nth-child(4) {
+    right: 20px;
+    bottom: 16px;
+}
+
+.DiceContainer-6>div:nth-child(5) {
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.DiceContainer-6>div:nth-child(6) {
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.HistoryDiceContainer-1>div:nth-child(1) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.HistoryDiceContainer-2>div:nth-child(1) {
+    right: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-2>div:nth-child(2) {
+    left: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-3>div:nth-child(1) {
+    right: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-3>div:nth-child(2) {
+    left: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-3>div:nth-child(3) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.HistoryDiceContainer-4>div:nth-child(1) {
+    right: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-4>div:nth-child(2) {
+    left: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-4>div:nth-child(3) {
+    left: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-4>div:nth-child(4) {
+    right: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-5>div:nth-child(1) {
+    right: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-5>div:nth-child(2) {
+    left: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-5>div:nth-child(3) {
+    left: 5px;
+    top: 5px;
+}
+
+.HistoryDiceContainer-5>div:nth-child(4) {
+    right: 5px;
+    bottom: 5px;
+}
+
+.HistoryDiceContainer-5>div:nth-child(5) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.HistoryDiceContainer-6>div:nth-child(1) {
+    right: 5px;
+    top: 3px;
+}
+
+.HistoryDiceContainer-6>div:nth-child(2) {
+    left: 5px;
+    bottom: 3px;
+}
+
+.HistoryDiceContainer-6>div:nth-child(3) {
+    left: 5px;
+    top: 3px;
+}
+
+.HistoryDiceContainer-6>div:nth-child(4) {
+    right: 5px;
+    bottom: 3px;
+}
+
+.HistoryDiceContainer-6>div:nth-child(5) {
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.HistoryDiceContainer-6>div:nth-child(6) {
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+@media screen and (max-width: 681px) {
+    .DiceContainer-1>div:nth-child(1) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .DiceContainer-2>div:nth-child(1) {
+        right: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-2>div:nth-child(2) {
+        left: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-3>div:nth-child(1) {
+        right: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-3>div:nth-child(2) {
+        left: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-3>div:nth-child(3) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .DiceContainer-4>div:nth-child(1) {
+        right: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-4>div:nth-child(2) {
+        left: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-4>div:nth-child(3) {
+        left: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-4>div:nth-child(4) {
+        right: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-5>div:nth-child(1) {
+        right: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-5>div:nth-child(2) {
+        left: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-5>div:nth-child(3) {
+        left: 10px;
+        top: 10px;
+    }
+
+    .DiceContainer-5>div:nth-child(4) {
+        right: 10px;
+        bottom: 10px;
+    }
+
+    .DiceContainer-5>div:nth-child(5) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .DiceContainer-6>div:nth-child(1) {
+        right: 10px;
+        top: 8px;
+    }
+
+    .DiceContainer-6>div:nth-child(2) {
+        left: 10px;
+        bottom: 8px;
+    }
+
+    .DiceContainer-6>div:nth-child(3) {
+        left: 10px;
+        top: 8px;
+    }
+
+    .DiceContainer-6>div:nth-child(4) {
+        right: 10px;
+        bottom: 8px;
+    }
+
+    .DiceContainer-6>div:nth-child(5) {
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .DiceContainer-6>div:nth-child(6) {
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .HistoryDiceContainer-1>div:nth-child(1) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .HistoryDiceContainer-2>div:nth-child(1) {
+        right: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-2>div:nth-child(2) {
+        left: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-3>div:nth-child(1) {
+        right: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-3>div:nth-child(2) {
+        left: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-3>div:nth-child(3) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .HistoryDiceContainer-4>div:nth-child(1) {
+        right: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-4>div:nth-child(2) {
+        left: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-4>div:nth-child(3) {
+        left: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-4>div:nth-child(4) {
+        right: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-5>div:nth-child(1) {
+        right: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-5>div:nth-child(2) {
+        left: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-5>div:nth-child(3) {
+        left: 5px;
+        top: 5px;
+    }
+
+    .HistoryDiceContainer-5>div:nth-child(4) {
+        right: 5px;
+        bottom: 5px;
+    }
+
+    .HistoryDiceContainer-5>div:nth-child(5) {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(1) {
+        right: 5px;
+        top: 3px;
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(2) {
+        left: 5px;
+        bottom: 3px;
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(3) {
+        left: 5px;
+        top: 3px;
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(4) {
+        right: 5px;
+        bottom: 3px;
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(5) {
+        left: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .HistoryDiceContainer-6>div:nth-child(6) {
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+}
+
+@keyframes DiceLAnimation {
+    0% {
+        animation-timing-function: ease-in;
+        transform: translateY(-300px) rotate(10deg);
+    }
+
+    40% {
+        animation-timing-function: ease-in;
+        transform: translateY(-24px) rotate(-8deg);
+    }
+
+    65% {
+        animation-timing-function: ease-in;
+        transform: translateY(-12px) rotate(6deg);
+    }
+
+    82% {
+        animation-timing-function: ease-in;
+        transform: translateY(-6px);
+    }
+
+    93% {
+        animation-timing-function: ease-in;
+        transform: translateY(-4px);
+    }
+
+    25%,
+    55%,
+    75%,
+    87% {
+        animation-timing-function: ease-out;
+        transform: translateY(0px);
+    }
+
+    100% {
+        animation-timing-function: ease-out;
+        transform: translateY(0px);
+    }
+}
+
+@keyframes DiceRAnimation {
+    0% {
+        animation-timing-function: ease-in;
+        transform: translateY(-300px) rotate(10deg);
+    }
+
+    40% {
+        animation-timing-function: ease-in;
+        transform: translateY(-24px) rotate(-8deg);
+    }
+
+    65% {
+        animation-timing-function: ease-in;
+        transform: translateY(-12px) rotate(6deg);
+    }
+
+    82% {
+        animation-timing-function: ease-in;
+        transform: translateY(-6px);
+    }
+
+    93% {
+        animation-timing-function: ease-in;
+        transform: translateY(-4px);
+    }
+
+    25%,
+    55%,
+    75%,
+    87% {
+        animation-timing-function: ease-out;
+        transform: translateY(0px);
+    }
+
+    100% {
+        animation-timing-function: ease-out;
+        transform: translateY(0px);
+    }
+}
+
+.DiceAnimate>div:first-child {
+    animation: 1000ms ease 0s 1 normal forwards running DiceLAnimation;
+}
+
+.DiceAnimate>div:last-child {
+    animation: 1200ms ease 0s 1 normal forwards running DiceRAnimation;
+}

@@ -81,6 +81,11 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // Casino-specific colors
+        win: "hsl(var(--win) / <alpha-value>)",
+        loss: "hsl(var(--loss) / <alpha-value>)",
+        "bet-active": "hsl(var(--bet-active) / <alpha-value>)",
+        gold: "hsl(var(--gold) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

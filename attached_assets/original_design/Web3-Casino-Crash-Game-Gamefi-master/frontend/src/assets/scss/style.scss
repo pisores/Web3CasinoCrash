@@ -1,0 +1,94 @@
+body {
+    background-color: #1F1E25 !important;
+}
+
+span,
+div {
+    user-select: none;
+}
+
+* {
+    font-family: 'Styrene A Web';
+}
+
+a {
+    text-decoration: none;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.loading-container {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background: #ffffff11;
+    z-index: 9999;
+}
+
+.react-toast-notifications__container {
+    z-index: 10000 !important;
+}
+
+.MuiPaper-root {
+    background-color: #1f1e25 !important
+}
+
+.CustomScroll::-webkit-scrollbar {
+    width: 3px;
+}
+
+.CustomScroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.CustomScroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(48.57deg, #5A45D1 24.42%, #BA6AFF 88.19%);
+    border-radius: 2px;
+    width: 4px;
+}
+
+.NoScroll::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 0px;
+}
+
+.Wrap-Pre {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+}
+
+.MuiOutlinedInput-notchedOutline {
+    border: none;
+}
+
+.Game_Scene_CANVAS {
+    width: 100%;
+    height: 829px;
+    border-radius: 30px;
+}
+
+.Sub_Scene_CANVAS {
+    width: 100%;
+    height: 100%;
+    border-radius: 30px;
+}
+
+.Sub_Scene_CANVAS>canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 30px;
+}
