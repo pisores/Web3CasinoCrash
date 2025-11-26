@@ -31,12 +31,20 @@ interface Withdrawal {
   };
 }
 
+const NETWORKS = [
+  { id: "TON", name: "TON", icon: "💎" },
+  { id: "TRC20", name: "TRC20 (Tron)", icon: "🔴" },
+  { id: "ERC20", name: "ERC20 (Ethereum)", icon: "🔷" },
+  { id: "BEP20", name: "BEP20 (BSC)", icon: "🟡" },
+];
+
 export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps) {
   const { user, refetchUser, telegramUser } = useTelegram();
   const { toast } = useToast();
   const [promoCode, setPromoCode] = useState("");
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [selectedNetwork, setSelectedNetwork] = useState("TON");
 
   const isAdmin = telegramUser?.username?.toLowerCase() === "nahalist" || user?.isAdmin;
 
@@ -127,11 +135,11 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
   });
 
   const withdrawMutation = useMutation({
-    mutationFn: async ({ amount, address }: { amount: number; address: string }) => {
+    mutationFn: async ({ amount, address, network }: { amount: number; address: string; network: string }) => {
       const response = await fetch("/api/wallet/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ odejs: user?.id, amount, walletAddress: address }),
+        body: JSON.stringify({ odejs: user?.id, amount, walletAddress: address, network }),
       });
       if (!response.ok) {
         const data = await response.json();
@@ -144,10 +152,11 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
       refetchUser();
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/withdrawals"] });
       setWithdrawAmount("");
+      setWithdrawAddress("");
       toast({ title: "Запрос создан", description: "Ожидает одобрения администратора" });
     },
-    onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось создать запрос на вывод", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Ошибка", description: error.message || "Не удалось создать запрос на вывод", variant: "destructive" });
     },
   });
 
@@ -164,8 +173,8 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
 
   const handleWithdraw = () => {
     const amount = parseFloat(withdrawAmount);
-    if (amount > 0 && amount <= balance && withdrawAddress.trim()) {
-      withdrawMutation.mutate({ amount, address: withdrawAddress.trim() });
+    if (amount > 0 && amount <= balance && withdrawAddress.trim() && selectedNetwork) {
+      withdrawMutation.mutate({ amount, address: withdrawAddress.trim(), network: selectedNetwork });
     }
   };
 
@@ -390,10 +399,31 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Укажите адрес TON кошелька и сумму для вывода
+                  Выберите сеть, укажите адрес кошелька и сумму
                 </p>
+                
+                {/* Network Selection */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Сеть вывода:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {NETWORKS.map((network) => (
+                      <Button
+                        key={network.id}
+                        variant={selectedNetwork === network.id ? "default" : "outline"}
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => setSelectedNetwork(network.id)}
+                        data-testid={`button-network-${network.id}`}
+                      >
+                        <span className="mr-2">{network.icon}</span>
+                        {network.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
                 <Input
-                  placeholder="Адрес TON кошелька (UQB...)"
+                  placeholder={`Адрес ${selectedNetwork} кошелька`}
                   value={withdrawAddress}
                   onChange={(e) => setWithdrawAddress(e.target.value)}
                   data-testid="input-withdraw-address"
@@ -412,13 +442,14 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
                     disabled={
                       !withdrawAmount || 
                       !withdrawAddress.trim() ||
+                      !selectedNetwork ||
                       parseFloat(withdrawAmount) > balance || 
                       parseFloat(withdrawAmount) <= 0 ||
                       withdrawMutation.isPending
                     }
                     data-testid="button-withdraw"
                   >
-                    Вывести
+                    {withdrawMutation.isPending ? "..." : "Вывести"}
                   </Button>
                 </div>
                 <div className="flex gap-2">

@@ -799,7 +799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request withdrawal
   app.post("/api/wallet/withdraw", async (req, res) => {
     try {
-      const { odejs, amount, walletAddress } = req.body;
+      const { odejs, amount, walletAddress, network } = req.body;
       
       if (!odejs || !amount || amount <= 0) {
         return res.status(400).json({ error: "Некорректный запрос" });
@@ -807,6 +807,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!walletAddress || !walletAddress.trim()) {
         return res.status(400).json({ error: "Укажите адрес кошелька" });
+      }
+
+      if (!network) {
+        return res.status(400).json({ error: "Выберите сеть для вывода" });
       }
 
       if (amount < 10) {
@@ -825,17 +829,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Deduct balance immediately
       await storage.updateUserBalance(odejs, user.balance - amount);
       
-      // Create withdrawal request with provided wallet address
-      const withdrawalData: any = {
+      // Create withdrawal request with network info
+      const withdrawal = await storage.createWithdrawal({
+        odejs,
         amount,
-        walletAddress: walletAddress.trim(),
+        walletAddress: `[${network}] ${walletAddress.trim()}`,
         status: "pending",
-      };
-      withdrawalData["user" + "Id"] = odejs;
-      const withdrawal = await storage.createWithdrawal(withdrawalData);
+      });
       
       res.json({ success: true, withdrawal, newBalance: user.balance - amount });
     } catch (error) {
+      console.error("Withdrawal error:", error);
       res.status(400).json({ error: "Не удалось создать запрос на вывод" });
     }
   });
