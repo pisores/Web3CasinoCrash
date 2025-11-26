@@ -13,10 +13,12 @@ import { PlinkoGame } from "@/pages/PlinkoGame";
 import { ScissorsGame } from "@/pages/ScissorsGame";
 import { TurtleRaceGame } from "@/pages/TurtleRaceGame";
 import { ProfilePage } from "@/pages/ProfilePage";
+import { WalletPage } from "@/pages/WalletPage";
+import AdminPanel from "@/pages/AdminPanel";
 import { type GameType } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 
-type Screen = GameType | "profile" | null;
+type Screen = GameType | "profile" | "wallet" | "admin" | null;
 
 function GameApp() {
   const { isReady, isLoading, user, updateBalance, refetchUser } = useTelegram();
@@ -42,7 +44,21 @@ function GameApp() {
     );
   }
 
-  const balance = user?.balance ?? 1000;
+  const balance = user?.balance ?? 1;
+
+  if (currentScreen === "admin") {
+    return <AdminPanel />;
+  }
+
+  if (currentScreen === "wallet") {
+    return (
+      <WalletPage
+        balance={balance}
+        onBack={handleBack}
+        onBalanceChange={handleBalanceChange}
+      />
+    );
+  }
 
   if (currentScreen === "profile") {
     return (
@@ -128,6 +144,8 @@ function GameApp() {
       balance={balance}
       onSelectGame={(gameId) => setCurrentScreen(gameId)}
       onOpenProfile={() => setCurrentScreen("profile")}
+      onOpenWallet={() => setCurrentScreen("wallet")}
+      onOpenAdmin={() => setCurrentScreen("admin")}
     />
   );
 }

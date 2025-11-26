@@ -3,17 +3,20 @@ import { GameCard } from "@/components/GameCard";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { LiveFeed, OnlineCounter } from "@/components/LiveFeed";
 import { useTelegram } from "@/components/TelegramProvider";
-import { Trophy, User, Gift } from "lucide-react";
+import { Trophy, User, Gift, Wallet, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface GameLobbyProps {
   balance: number;
   onSelectGame: (gameId: GameType) => void;
   onOpenProfile: () => void;
+  onOpenWallet: () => void;
+  onOpenAdmin: () => void;
 }
 
-export function GameLobby({ balance, onSelectGame, onOpenProfile }: GameLobbyProps) {
+export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, onOpenAdmin }: GameLobbyProps) {
   const { user, hapticFeedback } = useTelegram();
+  const isAdmin = user?.username === "nahalist" || user?.isAdmin;
 
   return (
     <div className="min-h-screen bg-background" data-testid="page-game-lobby">
@@ -52,8 +55,34 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile }: GameLobbyPro
           </Button>
 
           {/* Online Counter & Balance */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <OnlineCounter />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                hapticFeedback("light");
+                onOpenWallet();
+              }}
+              className="w-9 h-9"
+              data-testid="button-wallet"
+            >
+              <Wallet className="w-5 h-5" />
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  hapticFeedback("light");
+                  onOpenAdmin();
+                }}
+                className="w-9 h-9"
+                data-testid="button-admin"
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+            )}
             <BalanceDisplay balance={balance} />
           </div>
         </div>
