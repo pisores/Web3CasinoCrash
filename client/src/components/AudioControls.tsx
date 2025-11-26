@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAudio, type GameType } from "./AudioProvider";
 
@@ -19,35 +19,31 @@ export function AudioControls({ gameType = "lobby" }: AudioControlsProps) {
     setCurrentGame(gameType);
   }, [gameType, setCurrentGame]);
 
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={toggleMusic}
-        className="h-8 w-8"
-        data-testid="button-toggle-music"
-      >
-        {settings.musicEnabled ? (
-          <Music className="h-4 w-4 text-green-500" />
-        ) : (
-          <Music2 className="h-4 w-4 text-muted-foreground" />
-        )}
-      </Button>
+  const isEnabled = settings.musicEnabled || settings.soundEnabled;
 
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={toggleSound}
-        className="h-8 w-8"
-        data-testid="button-toggle-sound"
-      >
-        {settings.soundEnabled ? (
-          <Volume2 className="h-4 w-4 text-green-500" />
-        ) : (
-          <VolumeX className="h-4 w-4 text-muted-foreground" />
-        )}
-      </Button>
-    </div>
+  const handleToggle = () => {
+    if (isEnabled) {
+      if (settings.musicEnabled) toggleMusic();
+      if (settings.soundEnabled) toggleSound();
+    } else {
+      if (!settings.musicEnabled) toggleMusic();
+      if (!settings.soundEnabled) toggleSound();
+    }
+  };
+
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={handleToggle}
+      className="h-8 w-8"
+      data-testid="button-toggle-audio"
+    >
+      {isEnabled ? (
+        <Volume2 className="h-4 w-4 text-green-500" />
+      ) : (
+        <VolumeX className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
   );
 }
