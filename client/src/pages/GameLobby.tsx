@@ -107,7 +107,7 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-card border border-card-border rounded-xl p-3 text-center">
-            <span className="text-2xl font-bold text-foreground">7</span>
+            <span className="text-2xl font-bold text-foreground">8</span>
             <p className="text-xs text-muted-foreground mt-1">Games</p>
           </div>
           <div className="bg-card border border-card-border rounded-xl p-3 text-center">

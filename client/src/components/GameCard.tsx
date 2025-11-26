@@ -8,6 +8,7 @@ import slotImg from "@/assets/games/slot.png";
 import plinkoImg from "@/assets/games/plinko.png";
 import scissorImg from "@/assets/games/scissor.png";
 import turtleImg from "@/assets/games/turtle.png";
+import pokerImg from "@assets/generated_images/poker_table_casino_image.png";
 
 interface GameCardProps {
   game: GameConfig;
@@ -15,6 +16,7 @@ interface GameCardProps {
 }
 
 const gameImages: Record<string, string> = {
+  poker: pokerImg,
   crash: crashImg,
   mines: minesImg,
   dice: diceImg,

@@ -354,8 +354,8 @@ export function PokerTable({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-sm">
-              JP
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-black font-bold text-xs">
+              PP
             </div>
             <Button
               variant="ghost"
@@ -376,31 +376,51 @@ export function PokerTable({
         </div>
       </header>
 
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 relative overflow-hidden bg-gradient-to-b from-zinc-950 to-zinc-900">
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="relative w-full max-w-lg" style={{ aspectRatio: "16/10" }}>
             <svg viewBox="0 0 400 250" className="w-full h-full">
               <defs>
-                <linearGradient id="tableGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#1e3a5f" />
-                  <stop offset="50%" stopColor="#0f2744" />
-                  <stop offset="100%" stopColor="#0a1929" />
+                <linearGradient id="feltGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1a5a3a" />
+                  <stop offset="30%" stopColor="#0d4a2a" />
+                  <stop offset="70%" stopColor="#0d4a2a" />
+                  <stop offset="100%" stopColor="#083a20" />
                 </linearGradient>
-                <linearGradient id="borderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#2d4a6f" />
-                  <stop offset="100%" stopColor="#1a3252" />
+                <linearGradient id="woodGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#8B4513" />
+                  <stop offset="30%" stopColor="#654321" />
+                  <stop offset="70%" stopColor="#5D3A1A" />
+                  <stop offset="100%" stopColor="#3D2914" />
+                </linearGradient>
+                <linearGradient id="innerRimGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#2a6a4a" />
+                  <stop offset="100%" stopColor="#083a20" />
                 </linearGradient>
                 <filter id="tableShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.5"/>
+                  <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#000" floodOpacity="0.7"/>
                 </filter>
+                <filter id="innerShadow" x="-5%" y="-5%" width="110%" height="110%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.4"/>
+                </filter>
+                <pattern id="feltTexture" patternUnits="userSpaceOnUse" width="4" height="4">
+                  <rect width="4" height="4" fill="#0d4a2a"/>
+                  <circle cx="1" cy="1" r="0.5" fill="#0a3d22" opacity="0.3"/>
+                  <circle cx="3" cy="3" r="0.5" fill="#0a3d22" opacity="0.3"/>
+                </pattern>
               </defs>
               
-              <ellipse cx="200" cy="125" rx="190" ry="115" fill="url(#borderGradient)" filter="url(#tableShadow)" />
-              <ellipse cx="200" cy="125" rx="175" ry="105" fill="url(#tableGradient)" />
-              <ellipse cx="200" cy="125" rx="165" ry="95" fill="none" stroke="#1a3a5a" strokeWidth="1" strokeDasharray="4,4" opacity="0.5" />
+              <ellipse cx="200" cy="125" rx="195" ry="120" fill="url(#woodGradient)" filter="url(#tableShadow)" />
+              <ellipse cx="200" cy="125" rx="185" ry="110" fill="url(#innerRimGradient)" />
+              <ellipse cx="200" cy="125" rx="175" ry="100" fill="url(#feltGradient)" filter="url(#innerShadow)" />
+              <ellipse cx="200" cy="125" rx="175" ry="100" fill="url(#feltTexture)" opacity="0.5" />
+              <ellipse cx="200" cy="125" rx="160" ry="85" fill="none" stroke="#1a6a4a" strokeWidth="1.5" strokeDasharray="6,4" opacity="0.4" />
               
-              <text x="200" y="130" textAnchor="middle" fill="#1a4a7a" fontSize="24" fontWeight="bold" opacity="0.3">
+              <text x="200" y="125" textAnchor="middle" fill="#1a6a4a" fontSize="22" fontWeight="bold" fontFamily="serif" opacity="0.25">
                 PapaPoker
+              </text>
+              <text x="200" y="145" textAnchor="middle" fill="#1a6a4a" fontSize="10" opacity="0.2">
+                TEXAS HOLD'EM
               </text>
             </svg>
 
