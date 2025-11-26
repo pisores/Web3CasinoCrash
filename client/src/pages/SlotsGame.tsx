@@ -59,7 +59,7 @@ export function SlotsGame({ balance, onBalanceChange, onBack }: SlotsGameProps) 
       
       const [response] = await Promise.all([
         apiRequest("POST", "/api/games/slots/spin", {
-          userId: user?.id || "demo",
+          odejs: user?.id || "demo",
           amount: betAmount,
         }),
         animateReels(),

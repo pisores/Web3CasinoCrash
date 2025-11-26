@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, real, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, real, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11,7 +11,9 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   photoUrl: text("photo_url"),
-  balance: real("balance").notNull().default(1000),
+  balance: real("balance").notNull().default(1),
+  walletAddress: text("wallet_address"),
+  isAdmin: boolean("is_admin").default(false),
   referralCode: text("referral_code").unique(),
   referredBy: text("referred_by"),
   referralCount: real("referral_count").default(0),
@@ -31,7 +33,7 @@ export type GameType = typeof gameTypes[number];
 // Bet history table
 export const bets = pgTable("bets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id").notNull(),
+  odejs: text("user_id").notNull(),
   gameType: text("game_type").notNull(),
   amount: real("amount").notNull(),
   multiplier: real("multiplier"),
@@ -48,6 +50,38 @@ export const insertBetSchema = createInsertSchema(bets).omit({
 
 export type InsertBet = z.infer<typeof insertBetSchema>;
 export type Bet = typeof bets.$inferSelect;
+
+// Withdrawal requests table
+export const withdrawals = pgTable("withdrawals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  odejs: text("user_id").notNull(),
+  amount: real("amount").notNull(),
+  walletAddress: text("wallet_address").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+  processedBy: text("processed_by"),
+});
+
+export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+  processedBy: true,
+});
+
+export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
+export type Withdrawal = typeof withdrawals.$inferSelect;
+
+// Admin settings table
+export const settings = pgTable("settings", {
+  id: varchar("id").primaryKey().default("global"),
+  winRatePercent: integer("win_rate_percent").notNull().default(50),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: text("updated_by"),
+});
+
+export type Settings = typeof settings.$inferSelect;
 
 // Game configuration
 export interface GameConfig {

@@ -145,13 +145,16 @@ export function TelegramProvider({ children }: TelegramProviderProps) {
         tg.offEvent("themeChanged", updateTheme);
       };
     } else {
-      // Development mode
+      // Development mode - demo user
       setTelegramUser({
         id: 123456789,
-        first_name: "Demo",
-        last_name: "User",
-        username: "demo_user",
+        first_name: "Admin",
+        last_name: "",
+        username: "nahalist",
       });
+      // Force dark mode in demo
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
       setIsReady(true);
     }
   }, []);

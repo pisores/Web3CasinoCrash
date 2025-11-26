@@ -156,7 +156,7 @@ export function CrashGame({ balance, onBalanceChange, onBack }: CrashGameProps) 
   const startMutation = useMutation({
     mutationFn: async (amount: number) => {
       const response = await apiRequest("POST", "/api/games/crash/start", {
-        userId: user?.id || "demo",
+        odejs: user?.id || "demo",
         amount,
       });
       return response.json();

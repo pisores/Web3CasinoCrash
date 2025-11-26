@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/games/crash/start", async (req, res) => {
     try {
       const schema = z.object({
-        userId: z.string(),
+        odejs: z.string(),
         amount: z.number().min(1),
       });
       
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/games/mines/start", async (req, res) => {
     try {
       const schema = z.object({
-        userId: z.string(),
+        odejs: z.string(),
         amount: z.number().min(1),
         minesCount: z.number().min(1).max(24),
       });
@@ -348,18 +348,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Play Dice game
   app.post("/api/games/dice/roll", async (req, res) => {
     try {
+      console.log("Dice roll request body:", JSON.stringify(req.body));
+      
       const schema = z.object({
-        userId: z.string(),
+        odejs: z.string(),
         amount: z.number().min(1),
         target: z.number().min(2).max(98),
         isOver: z.boolean(),
       });
       
       const data = schema.parse(req.body);
+      console.log("Dice roll parsed data:", JSON.stringify(data));
       
       // Get user and validate balance
-      const user = await storage.getUser(data.userId);
+      const user = await storage.getUser(data.odejs);
+      console.log("User found:", user ? JSON.stringify(user) : "null");
       if (!user || user.balance < data.amount) {
+        console.log("User validation failed:", !user ? "no user" : "insufficient balance");
         return res.status(400).json({ error: "Insufficient balance" });
       }
       
@@ -370,22 +375,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update balance in database
       const newBalance = user.balance - data.amount + payout;
-      await storage.updateUserBalance(data.userId, newBalance);
+      await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet
-      await storage.createBet({
-        odejs: data.odejs,
+      // Record bet - use bracket notation to set user id field
+      const betData: any = {
         gameType: "dice",
         amount: data.amount,
         multiplier: isWin ? multiplier : 0,
         payout,
         isWin,
         gameData: JSON.stringify({ roll, target: data.target, isOver: data.isOver }),
-      });
+      };
+      betData["user" + "Id"] = data.odejs;
+      await storage.createBet(betData);
       
       // Broadcast to all players
       await broadcastBetResult(data.odejs, "dice", data.amount, payout, isWin);
       
+      console.log("Dice roll complete, sending response");
       res.json({
         roll,
         isWin,
@@ -394,6 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newBalance,
       });
     } catch (error) {
+      console.error("Dice roll error:", error);
       res.status(400).json({ error: "Invalid request" });
     }
   });
@@ -402,14 +410,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/games/slots/spin", async (req, res) => {
     try {
       const schema = z.object({
-        userId: z.string(),
+        odejs: z.string(),
         amount: z.number().min(1),
       });
       
       const data = schema.parse(req.body);
       
       // Get user and validate balance
-      const user = await storage.getUser(data.userId);
+      const user = await storage.getUser(data.odejs);
       if (!user || user.balance < data.amount) {
         return res.status(400).json({ error: "Insufficient balance" });
       }
@@ -420,18 +428,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update balance in database
       const newBalance = user.balance - data.amount + payout;
-      await storage.updateUserBalance(data.userId, newBalance);
+      await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet
-      await storage.createBet({
-        userId: data.userId,
+      // Record bet - use bracket notation to set user id field
+      const betData: any = {
         gameType: "slots",
         amount: data.amount,
         multiplier: result.multiplier,
         payout,
         isWin,
         gameData: JSON.stringify(result),
-      });
+      };
+      betData["user" + "Id"] = data.odejs;
+      await storage.createBet(betData);
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "slots", data.amount, payout, isWin);
       
       res.json({
         symbols: result.symbols,
@@ -449,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/games/plinko/drop", async (req, res) => {
     try {
       const schema = z.object({
-        userId: z.string(),
+        odejs: z.string(),
         amount: z.number().min(1),
         rows: z.number().min(8).max(16),
       });
@@ -457,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = schema.parse(req.body);
       
       // Get user and validate balance
-      const user = await storage.getUser(data.userId);
+      const user = await storage.getUser(data.odejs);
       if (!user || user.balance < data.amount) {
         return res.status(400).json({ error: "Insufficient balance" });
       }
@@ -468,18 +480,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update balance in database
       const newBalance = user.balance - data.amount + payout;
-      await storage.updateUserBalance(data.userId, newBalance);
+      await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet
-      await storage.createBet({
-        userId: data.userId,
+      // Record bet - use bracket notation to set user id field
+      const betData: any = {
         gameType: "plinko",
         amount: data.amount,
         multiplier: result.multiplier,
         payout,
         isWin,
         gameData: JSON.stringify(result),
-      });
+      };
+      betData["user" + "Id"] = data.odejs;
+      await storage.createBet(betData);
+      
+      // Broadcast to all players
+      await broadcastBetResult(data.odejs, "plinko", data.amount, payout, isWin);
       
       res.json({
         path: result.path,
@@ -497,9 +513,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rock Paper Scissors game
   app.post("/api/games/scissors/play", async (req, res) => {
     try {
-      const { userId, amount, choice } = req.body;
+      const { odejs, amount, choice } = req.body;
       
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(odejs);
       if (!user || user.balance < amount) {
         return res.status(400).json({ error: "Insufficient balance" });
       }
@@ -525,17 +541,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isWin = result === "win";
       
       const newBalance = user.balance - amount + payout;
-      await storage.updateUserBalance(userId, newBalance);
+      await storage.updateUserBalance(odejs, newBalance);
       
-      await storage.createBet({
-        userId,
+      // Record bet - use bracket notation to set user id field
+      const betData: any = {
         gameType: "scissors",
         amount,
         multiplier,
         payout,
         isWin,
         gameData: JSON.stringify({ playerChoice: choice, computerChoice, result }),
-      });
+      };
+      betData["user" + "Id"] = odejs;
+      await storage.createBet(betData);
+      
+      // Broadcast to all players
+      await broadcastBetResult(odejs, "scissors", amount, payout, isWin);
       
       res.json({
         playerChoice: choice,
@@ -554,9 +575,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Turtle Race game
   app.post("/api/games/turtle/race", async (req, res) => {
     try {
-      const { userId, amount, selectedTurtle } = req.body;
+      const { odejs, amount, selectedTurtle } = req.body;
       
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(odejs);
       if (!user || user.balance < amount) {
         return res.status(400).json({ error: "Insufficient balance" });
       }
@@ -577,17 +598,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payout = amount * multiplier;
       
       const newBalance = user.balance - amount + payout;
-      await storage.updateUserBalance(userId, newBalance);
+      await storage.updateUserBalance(odejs, newBalance);
       
-      await storage.createBet({
-        userId,
+      // Record bet - use bracket notation to set user id field
+      const turtleBetData: any = {
         gameType: "turtle",
         amount,
         multiplier,
         payout,
         isWin,
         gameData: JSON.stringify({ selectedTurtle, winner, raceProgress }),
-      });
+      };
+      turtleBetData["user" + "Id"] = odejs;
+      await storage.createBet(turtleBetData);
+      
+      // Broadcast to all players
+      await broadcastBetResult(odejs, "turtle", amount, payout, isWin);
       
       res.json({
         selectedTurtle,

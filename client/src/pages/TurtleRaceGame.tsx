@@ -44,7 +44,7 @@ export function TurtleRaceGame({ balance, onBalanceChange, onBack }: TurtleRaceG
   const raceMutation = useMutation({
     mutationFn: async ({ betAmount, turtle }: { betAmount: number; turtle: TurtleColor }) => {
       const response = await apiRequest("POST", "/api/games/turtle/race", {
-        userId: user?.id || "demo",
+        odejs: user?.id || "demo",
         amount: betAmount,
         selectedTurtle: turtle,
       });

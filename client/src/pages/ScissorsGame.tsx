@@ -38,7 +38,7 @@ export function ScissorsGame({ balance, onBalanceChange, onBack }: ScissorsGameP
   const playMutation = useMutation({
     mutationFn: async ({ betAmount, choice }: { betAmount: number; choice: Choice }) => {
       const response = await apiRequest("POST", "/api/games/scissors/play", {
-        userId: user?.id || "demo",
+        odejs: user?.id || "demo",
         amount: betAmount,
         choice,
       });

@@ -56,7 +56,7 @@ export function DiceGame({ balance, onBalanceChange, onBack }: DiceGameProps) {
       
       const [response] = await Promise.all([
         apiRequest("POST", "/api/games/dice/roll", {
-          userId: user?.id || "demo",
+          odejs: user?.id || "demo",
           amount: betAmount,
           target,
           isOver,

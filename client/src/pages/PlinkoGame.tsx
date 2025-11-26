@@ -104,7 +104,7 @@ export function PlinkoGame({ balance, onBalanceChange, onBack }: PlinkoGameProps
       setBallPosition({ x: 0.5, y: 0.05 });
       
       const response = await apiRequest("POST", "/api/games/plinko/drop", {
-        userId: user?.id || "demo",
+        odejs: user?.id || "demo",
         amount: betAmount,
         rows,
       });

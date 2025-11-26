@@ -49,7 +49,7 @@ export function MinesGame({ balance, onBalanceChange, onBack }: MinesGameProps) 
   const startMutation = useMutation({
     mutationFn: async (amount: number) => {
       const response = await apiRequest("POST", "/api/games/mines/start", {
-        userId: user?.id || "demo",
+        odejs: user?.id || "demo",
         amount,
         minesCount,
       });
