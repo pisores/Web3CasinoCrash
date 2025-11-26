@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { ArrowLeft, Settings, Users, Wallet, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Settings, Users, Wallet, CheckCircle, XCircle, RefreshCw, Ticket, Plus } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,16 @@ interface AdminSettings {
   updatedBy: string | null;
 }
 
+interface PromoCode {
+  id: string;
+  code: string;
+  bonusAmount: number;
+  maxUses: number | null;
+  currentUses: number | null;
+  isActive: boolean | null;
+  createdAt: string;
+}
+
 interface AdminPanelProps {
   onBack: () => void;
 }
@@ -47,9 +57,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [winRate, setWinRate] = useState<number>(50);
   const [editingBalance, setEditingBalance] = useState<string | null>(null);
   const [newBalance, setNewBalance] = useState<string>("");
+  const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoBonus, setNewPromoBonus] = useState("");
+  const [newPromoMaxUses, setNewPromoMaxUses] = useState("");
 
   const adminHeaders = {
-    "x-admin-id": user?.odejs || "demo",
+    "x-admin-id": user?.id || "demo",
   };
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AdminSettings>({
@@ -76,6 +89,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     queryKey: ["/api/admin/users"],
     queryFn: async () => {
       const res = await fetch("/api/admin/users", { headers: adminHeaders });
+      if (!res.ok) throw new Error("Unauthorized");
+      return res.json();
+    },
+  });
+
+  const { data: promoCodes, isLoading: promoLoading } = useQuery<PromoCode[]>({
+    queryKey: ["/api/admin/promo-codes"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/promo-codes", { headers: adminHeaders });
       if (!res.ok) throw new Error("Unauthorized");
       return res.json();
     },
@@ -130,6 +152,31 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setEditingBalance(null);
       toast({ title: "Успешно", description: "Баланс обновлён" });
+    },
+  });
+
+  const createPromoMutation = useMutation({
+    mutationFn: async ({ code, bonusAmount, maxUses }: { code: string; bonusAmount: number; maxUses: number }) => {
+      const res = await fetch("/api/admin/promo-codes", {
+        method: "POST",
+        headers: { ...adminHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ code, bonusAmount, maxUses }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/promo-codes"] });
+      setNewPromoCode("");
+      setNewPromoBonus("");
+      setNewPromoMaxUses("");
+      toast({ title: "Успешно", description: "Промокод создан" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     },
   });
 
@@ -351,6 +398,82 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                         </>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ticket className="w-5 h-5" />
+              Промокоды
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2 flex-wrap">
+              <Input
+                placeholder="Код (напр. BONUS100)"
+                value={newPromoCode}
+                onChange={(e) => setNewPromoCode(e.target.value.toUpperCase())}
+                className="w-36 uppercase"
+                data-testid="input-promo-code"
+              />
+              <Input
+                type="number"
+                placeholder="Бонус USDT"
+                value={newPromoBonus}
+                onChange={(e) => setNewPromoBonus(e.target.value)}
+                className="w-28"
+                data-testid="input-promo-bonus"
+              />
+              <Input
+                type="number"
+                placeholder="Лимит (0=∞)"
+                value={newPromoMaxUses}
+                onChange={(e) => setNewPromoMaxUses(e.target.value)}
+                className="w-28"
+                data-testid="input-promo-max-uses"
+              />
+              <Button
+                onClick={() => createPromoMutation.mutate({
+                  code: newPromoCode,
+                  bonusAmount: parseFloat(newPromoBonus),
+                  maxUses: parseInt(newPromoMaxUses) || 0,
+                })}
+                disabled={!newPromoCode || !newPromoBonus || createPromoMutation.isPending}
+                data-testid="button-create-promo"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Создать
+              </Button>
+            </div>
+
+            {promoLoading ? (
+              <div className="text-center py-4 text-muted-foreground">Загрузка...</div>
+            ) : !promoCodes || promoCodes.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Нет промокодов
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {promoCodes.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-3 bg-card border rounded-lg"
+                    data-testid={`promo-${p.id}`}
+                  >
+                    <div>
+                      <p className="font-mono font-bold text-primary">{p.code}</p>
+                      <p className="text-xs text-muted-foreground">
+                        +{p.bonusAmount} USDT • Использовано: {p.currentUses || 0}/{p.maxUses || "∞"}
+                      </p>
+                    </div>
+                    <Badge variant={p.isActive ? "default" : "secondary"}>
+                      {p.isActive ? "Активен" : "Неактивен"}
+                    </Badge>
                   </div>
                 ))}
               </div>

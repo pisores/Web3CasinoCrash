@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Wallet, ArrowUpRight, ArrowDownLeft, Copy, CheckCircle, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, Wallet, ArrowUpRight, Gift, CheckCircle, Clock, XCircle, Ticket } from "lucide-react";
 import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -27,63 +27,62 @@ interface Withdrawal {
 export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps) {
   const { user, refetchUser } = useTelegram();
   const { toast } = useToast();
-  const [walletAddress, setWalletAddress] = useState("");
-  const [depositAmount, setDepositAmount] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const { data: withdrawals } = useQuery<Withdrawal[]>({
-    queryKey: ["/api/wallet/withdrawals", user?.odejs],
+    queryKey: ["/api/wallet/withdrawals", user?.id],
     queryFn: async () => {
-      const res = await fetch(`/api/wallet/withdrawals/${user?.odejs}`);
+      const res = await fetch(`/api/wallet/withdrawals/${user?.id}`);
       return res.json();
     },
-    enabled: !!user?.odejs,
+    enabled: !!user?.id,
   });
 
-  const connectWalletMutation = useMutation({
-    mutationFn: async (address: string) => {
-      return apiRequest("/api/wallet/connect", {
+  const applyPromoMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const response = await fetch("/api/promo/apply", {
         method: "POST",
-        body: JSON.stringify({ odejs: user?.odejs, walletAddress: address }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ odejs: user?.id, code }),
       });
-    },
-    onSuccess: () => {
-      refetchUser();
-      toast({ title: "Успешно", description: "Кошелёк подключен" });
-    },
-    onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось подключить кошелёк", variant: "destructive" });
-    },
-  });
-
-  const depositMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      return apiRequest("/api/wallet/deposit", {
-        method: "POST",
-        body: JSON.stringify({ 
-          odejs: user?.odejs, 
-          amount,
-          txHash: `tx_${Date.now()}_demo`,
-        }),
-      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Ошибка");
+      }
+      return response.json();
     },
     onSuccess: (data: any) => {
       onBalanceChange(data.newBalance);
       refetchUser();
-      setDepositAmount("");
-      toast({ title: "Успешно", description: `Пополнено $${depositAmount}` });
+      setPromoCode("");
+      toast({ 
+        title: "Промокод активирован!", 
+        description: `+${data.bonus} USDT добавлено на баланс` 
+      });
     },
-    onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось пополнить баланс", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Промокод недействителен или уже использован", 
+        variant: "destructive" 
+      });
     },
   });
 
   const withdrawMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      return apiRequest("/api/wallet/withdraw", {
+    mutationFn: async ({ amount, address }: { amount: number; address: string }) => {
+      const response = await fetch("/api/wallet/withdraw", {
         method: "POST",
-        body: JSON.stringify({ odejs: user?.odejs, amount }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ odejs: user?.id, amount, walletAddress: address }),
       });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Ошибка");
+      }
+      return response.json();
     },
     onSuccess: (data: any) => {
       onBalanceChange(data.newBalance);
@@ -97,13 +96,6 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
     },
   });
 
-  const copyAddress = () => {
-    if (user?.walletAddress) {
-      navigator.clipboard.writeText(user.walletAddress);
-      toast({ title: "Скопировано", description: "Адрес кошелька скопирован" });
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -112,6 +104,13 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
         return <Badge className="bg-red-500/20 text-red-400"><XCircle className="w-3 h-3 mr-1" /> Отклонён</Badge>;
       default:
         return <Badge className="bg-yellow-500/20 text-yellow-400"><Clock className="w-3 h-3 mr-1" /> Ожидание</Badge>;
+    }
+  };
+
+  const handleWithdraw = () => {
+    const amount = parseFloat(withdrawAmount);
+    if (amount > 0 && amount <= balance && withdrawAddress.trim()) {
+      withdrawMutation.mutate({ amount, address: withdrawAddress.trim() });
     }
   };
 
@@ -125,171 +124,169 @@ export function WalletPage({ balance, onBack, onBalanceChange }: WalletPageProps
           <h1 className="text-2xl font-bold">Кошелёк</h1>
         </div>
 
-        <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/20">
+        <Card className="bg-gradient-to-br from-blue-500/20 to-cyan-500/5 border-blue-500/20">
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">Баланс</p>
-              <p className="text-4xl font-bold text-primary" data-testid="text-balance">
-                ${balance.toFixed(2)}
+              <p className="text-sm text-muted-foreground mb-1">Ваш баланс</p>
+              <p className="text-4xl font-bold text-blue-400" data-testid="text-balance">
+                {balance.toFixed(2)} USDT
               </p>
+              <p className="text-xs text-muted-foreground mt-2">≈ TON</p>
             </div>
           </CardContent>
         </Card>
 
-        {!user?.walletAddress ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Wallet className="w-5 h-5" />
-                Подключить кошелёк
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Введите адрес вашего TON кошелька для пополнения и вывода средств
-              </p>
-              <Input
-                placeholder="UQB...адрес кошелька"
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                data-testid="input-wallet-address"
-              />
-              <Button
-                className="w-full"
-                onClick={() => connectWalletMutation.mutate(walletAddress)}
-                disabled={!walletAddress || connectWalletMutation.isPending}
-                data-testid="button-connect-wallet"
-              >
-                Подключить
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
+        <Tabs defaultValue="promo">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="promo" data-testid="tab-promo">
+              <Ticket className="w-4 h-4 mr-2" />
+              Промокод
+            </TabsTrigger>
+            <TabsTrigger value="withdraw" data-testid="tab-withdraw">
+              <ArrowUpRight className="w-4 h-4 mr-2" />
+              Вывести
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="promo">
             <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Подключённый кошелёк</p>
-                    <p className="font-mono text-sm truncate max-w-[200px]" data-testid="text-wallet-address">
-                      {user.walletAddress}
-                    </p>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={copyAddress} data-testid="button-copy-address">
-                    <Copy className="w-4 h-4" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Gift className="w-5 h-5 text-primary" />
+                  Активировать промокод
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Введите промокод для получения бонуса на баланс
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Введите промокод"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    className="uppercase"
+                    data-testid="input-promo-code"
+                  />
+                  <Button
+                    onClick={() => applyPromoMutation.mutate(promoCode)}
+                    disabled={!promoCode.trim() || applyPromoMutation.isPending}
+                    data-testid="button-apply-promo"
+                  >
+                    {applyPromoMutation.isPending ? "..." : "Активировать"}
                   </Button>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    Промокоды можно получить от администратора или по реферальной программе
+                  </p>
                 </div>
               </CardContent>
             </Card>
-
-            <Tabs defaultValue="deposit">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="deposit" data-testid="tab-deposit">
-                  <ArrowDownLeft className="w-4 h-4 mr-2" />
-                  Пополнить
-                </TabsTrigger>
-                <TabsTrigger value="withdraw" data-testid="tab-withdraw">
-                  <ArrowUpRight className="w-4 h-4 mr-2" />
-                  Вывести
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="deposit">
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Отправьте TON на указанный адрес для пополнения баланса
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Сумма в $"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        data-testid="input-deposit-amount"
-                      />
-                      <Button
-                        onClick={() => depositMutation.mutate(parseFloat(depositAmount))}
-                        disabled={!depositAmount || depositMutation.isPending}
-                        data-testid="button-deposit"
-                      >
-                        Пополнить
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      {[10, 50, 100].map((amount) => (
-                        <Button
-                          key={amount}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDepositAmount(amount.toString())}
-                          data-testid={`button-deposit-${amount}`}
-                        >
-                          ${amount}
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="withdraw">
-                <Card>
-                  <CardContent className="pt-6 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Запрос на вывод будет рассмотрен администратором
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Сумма в $"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        max={balance}
-                        data-testid="input-withdraw-amount"
-                      />
-                      <Button
-                        onClick={() => withdrawMutation.mutate(parseFloat(withdrawAmount))}
-                        disabled={!withdrawAmount || parseFloat(withdrawAmount) > balance || withdrawMutation.isPending}
-                        data-testid="button-withdraw"
-                      >
-                        Вывести
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Доступно для вывода: ${balance.toFixed(2)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-
-            {withdrawals && withdrawals.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">История выводов</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {withdrawals.slice(0, 5).map((w) => (
-                    <div
-                      key={w.id}
-                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                      data-testid={`withdrawal-history-${w.id}`}
+          </TabsContent>
+          
+          <TabsContent value="withdraw">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Wallet className="w-5 h-5" />
+                  Вывод средств
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Укажите адрес TON кошелька и сумму для вывода
+                </p>
+                <Input
+                  placeholder="Адрес TON кошелька (UQB...)"
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  data-testid="input-withdraw-address"
+                />
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Сумма USDT"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    max={balance}
+                    data-testid="input-withdraw-amount"
+                  />
+                  <Button
+                    onClick={handleWithdraw}
+                    disabled={
+                      !withdrawAmount || 
+                      !withdrawAddress.trim() ||
+                      parseFloat(withdrawAmount) > balance || 
+                      parseFloat(withdrawAmount) <= 0 ||
+                      withdrawMutation.isPending
+                    }
+                    data-testid="button-withdraw"
+                  >
+                    Вывести
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  {[10, 50, 100].map((amount) => (
+                    <Button
+                      key={amount}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWithdrawAmount(amount.toString())}
+                      disabled={amount > balance}
+                      data-testid={`button-withdraw-${amount}`}
                     >
-                      <div>
-                        <p className="font-medium">${w.amount.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(w.createdAt).toLocaleDateString("ru")}
-                        </p>
-                      </div>
-                      {getStatusBadge(w.status)}
-                    </div>
+                      {amount} USDT
+                    </Button>
                   ))}
-                </CardContent>
-              </Card>
-            )}
-          </>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Доступно: {balance.toFixed(2)} USDT • Минимум: 10 USDT
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {withdrawals && withdrawals.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">История выводов</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {withdrawals.slice(0, 5).map((w) => (
+                <div
+                  key={w.id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                  data-testid={`withdrawal-history-${w.id}`}
+                >
+                  <div>
+                    <p className="font-medium">{w.amount.toFixed(2)} USDT</p>
+                    <p className="text-xs text-muted-foreground font-mono truncate max-w-[150px]">
+                      {w.walletAddress}
+                    </p>
+                  </div>
+                  {getStatusBadge(w.status)}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
+
+        <Card className="bg-muted/20">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <Gift className="w-5 h-5 text-primary mt-0.5" />
+              <div>
+                <p className="font-medium text-sm">Реферальная программа</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Приглашайте друзей и получайте 50 USDT за каждого! 
+                  Перейдите в профиль для получения реферальной ссылки.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

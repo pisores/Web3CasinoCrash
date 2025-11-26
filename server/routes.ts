@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { gameSocket } from "./websocket";
@@ -804,28 +804,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request withdrawal
   app.post("/api/wallet/withdraw", async (req, res) => {
     try {
-      const { odejs, amount } = req.body;
+      const { odejs, amount, walletAddress } = req.body;
       
+      if (!odejs || !amount || amount <= 0) {
+        return res.status(400).json({ error: "Некорректный запрос" });
+      }
+
+      if (!walletAddress || !walletAddress.trim()) {
+        return res.status(400).json({ error: "Укажите адрес кошелька" });
+      }
+
+      if (amount < 10) {
+        return res.status(400).json({ error: "Минимальная сумма вывода: 10 USDT" });
+      }
+
       const user = await storage.getUser(odejs);
       if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      if (!user.walletAddress) {
-        return res.status(400).json({ error: "Wallet not connected" });
+        return res.status(404).json({ error: "Пользователь не найден" });
       }
       
       if (user.balance < amount) {
-        return res.status(400).json({ error: "Insufficient balance" });
+        return res.status(400).json({ error: "Недостаточно средств" });
       }
       
       // Deduct balance immediately
       await storage.updateUserBalance(odejs, user.balance - amount);
       
-      // Create withdrawal request
+      // Create withdrawal request with provided wallet address
       const withdrawalData: any = {
         amount,
-        walletAddress: user.walletAddress,
+        walletAddress: walletAddress.trim(),
         status: "pending",
       };
       withdrawalData["user" + "Id"] = odejs;
@@ -833,7 +841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ success: true, withdrawal, newBalance: user.balance - amount });
     } catch (error) {
-      res.status(400).json({ error: "Failed to create withdrawal request" });
+      res.status(400).json({ error: "Не удалось создать запрос на вывод" });
     }
   });
 
@@ -852,25 +860,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Middleware to check admin - verifies user exists and has admin privileges
   // Note: For production, implement Telegram initData HMAC verification
-  const checkAdmin = async (req: any, res: Response, next: Function) => {
+  const checkAdmin: RequestHandler = async (req, res, next) => {
     const adminId = req.headers["x-admin-id"] as string;
     if (!adminId) {
-      return res.status(401).json({ error: "Unauthorized - Admin ID required" });
+      res.status(401).json({ error: "Unauthorized - Admin ID required" });
+      return;
     }
     
     const admin = await storage.getUser(adminId);
     if (!admin) {
-      return res.status(401).json({ error: "Unauthorized - User not found" });
+      res.status(401).json({ error: "Unauthorized - User not found" });
+      return;
     }
     
     // Check if user is admin by isAdmin flag OR by username (nahalist is always admin)
     const isAdminUser = admin.isAdmin || admin.username === "nahalist";
     if (!isAdminUser) {
-      return res.status(403).json({ error: "Forbidden - Admin access required" });
+      res.status(403).json({ error: "Forbidden - Admin access required" });
+      return;
     }
     
     // Attach admin user to request for use in route handlers
-    req.adminUser = admin;
+    (req as any).adminUser = admin;
     next();
   };
 
@@ -972,6 +983,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       res.status(400).json({ error: "Failed to update balance" });
+    }
+  });
+
+  // ===== PROMO CODE ENDPOINTS =====
+
+  // Apply promo code
+  app.post("/api/promo/apply", async (req, res) => {
+    try {
+      const { odejs, code } = req.body;
+      
+      if (!odejs || !code) {
+        return res.status(400).json({ error: "Требуется ID пользователя и промокод" });
+      }
+
+      const user = await storage.getUser(odejs);
+      if (!user) {
+        return res.status(404).json({ error: "Пользователь не найден" });
+      }
+
+      const promo = await storage.getPromoCode(code.toUpperCase());
+      if (!promo) {
+        return res.status(400).json({ error: "Промокод не найден" });
+      }
+
+      if (!promo.isActive) {
+        return res.status(400).json({ error: "Промокод неактивен" });
+      }
+
+      if (promo.maxUses && promo.maxUses > 0 && (promo.currentUses || 0) >= promo.maxUses) {
+        return res.status(400).json({ error: "Лимит использований промокода исчерпан" });
+      }
+
+      const alreadyUsed = await storage.checkPromoCodeUsage(odejs, promo.id);
+      if (alreadyUsed) {
+        return res.status(400).json({ error: "Вы уже использовали этот промокод" });
+      }
+
+      // Apply bonus
+      const newBalance = user.balance + promo.bonusAmount;
+      await storage.updateUserBalance(odejs, newBalance);
+      await storage.incrementPromoCodeUsage(promo.id);
+      await storage.recordPromoCodeUsage(odejs, promo.id);
+
+      res.json({ 
+        success: true, 
+        bonus: promo.bonusAmount, 
+        newBalance 
+      });
+    } catch (error) {
+      console.error("Promo code error:", error);
+      res.status(400).json({ error: "Не удалось применить промокод" });
+    }
+  });
+
+  // Get all promo codes (admin)
+  app.get("/api/admin/promo-codes", checkAdmin, async (req, res) => {
+    try {
+      const codes = await storage.getAllPromoCodes();
+      res.json(codes);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get promo codes" });
+    }
+  });
+
+  // Create promo code (admin)
+  app.post("/api/admin/promo-codes", checkAdmin, async (req, res) => {
+    try {
+      const { code, bonusAmount, maxUses } = req.body;
+      const adminId = req.headers["x-admin-id"] as string;
+      
+      if (!code || !bonusAmount) {
+        return res.status(400).json({ error: "Код и сумма бонуса обязательны" });
+      }
+
+      const existing = await storage.getPromoCode(code.toUpperCase());
+      if (existing) {
+        return res.status(400).json({ error: "Такой промокод уже существует" });
+      }
+
+      const promoCode = await storage.createPromoCode({
+        code: code.toUpperCase(),
+        bonusAmount,
+        maxUses: maxUses || 0,
+        isActive: true,
+        createdBy: adminId,
+      });
+
+      res.json(promoCode);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to create promo code" });
     }
   });
 
