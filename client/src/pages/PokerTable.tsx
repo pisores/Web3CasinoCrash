@@ -7,7 +7,7 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { useTelegram } from "@/components/TelegramProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
-import pokerTableImage from "@assets/generated_images/horizontal_oval_2d_poker_table.png";
+import pokerTableImage from "@assets/generated_images/vertical_poker_table_dark_elegant_text.png";
 
 interface PokerTableProps {
   tableId: string;
