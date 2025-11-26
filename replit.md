@@ -97,6 +97,11 @@ The app runs on port 5000 via `npm run dev`
 - Implemented referral system: generate codes, invite friends, earn $50 per referral
 - New users get $100 bonus when using referral code
 - Updated lobby design to pure black casino style
+- **NEW**: Admin-controlled win rate system - @nahalist can set win percentage for all games
+- **NEW**: Wallet integration - connect TON wallet, deposit, and request withdrawals
+- **NEW**: Admin panel for withdrawal approvals/rejections
+- **NEW**: All game logic now uses shouldPlayerWin() to respect admin win rate settings
+- Fixed Dice game boundary validation for edge cases (targets 1-99/100)
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)
