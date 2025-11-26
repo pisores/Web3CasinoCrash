@@ -648,6 +648,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(gameSocket.getStats());
   });
 
+  // ===== WALLET & DEPOSIT ENDPOINTS =====
+
+  // Connect wallet
+  app.post("/api/wallet/connect", async (req, res) => {
+    try {
+      const { odejs, walletAddress } = req.body;
+      
+      const user = await storage.getUser(odejs);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      await storage.updateUserWallet(odejs, walletAddress);
+      res.json({ success: true, walletAddress });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to connect wallet" });
+    }
+  });
+
+  // Deposit funds (simulated - in production would verify blockchain transaction)
+  app.post("/api/wallet/deposit", async (req, res) => {
+    try {
+      const { odejs, amount, txHash } = req.body;
+      
+      const user = await storage.getUser(odejs);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (!user.walletAddress) {
+        return res.status(400).json({ error: "Wallet not connected" });
+      }
+      
+      const newBalance = user.balance + amount;
+      await storage.updateUserBalance(odejs, newBalance);
+      
+      res.json({ success: true, newBalance, txHash });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to deposit" });
+    }
+  });
+
+  // Request withdrawal
+  app.post("/api/wallet/withdraw", async (req, res) => {
+    try {
+      const { odejs, amount } = req.body;
+      
+      const user = await storage.getUser(odejs);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (!user.walletAddress) {
+        return res.status(400).json({ error: "Wallet not connected" });
+      }
+      
+      if (user.balance < amount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+      
+      // Deduct balance immediately
+      await storage.updateUserBalance(odejs, user.balance - amount);
+      
+      // Create withdrawal request
+      const withdrawalData: any = {
+        amount,
+        walletAddress: user.walletAddress,
+        status: "pending",
+      };
+      withdrawalData["user" + "Id"] = odejs;
+      const withdrawal = await storage.createWithdrawal(withdrawalData);
+      
+      res.json({ success: true, withdrawal, newBalance: user.balance - amount });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to create withdrawal request" });
+    }
+  });
+
+  // Get user withdrawals
+  app.get("/api/wallet/withdrawals/:odejs", async (req, res) => {
+    try {
+      const allWithdrawals = await storage.getAllWithdrawals();
+      const userWithdrawals = allWithdrawals.filter(w => w.odejs === req.params.odejs);
+      res.json(userWithdrawals);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get withdrawals" });
+    }
+  });
+
+  // ===== ADMIN ENDPOINTS =====
+
+  // Middleware to check admin
+  const checkAdmin = async (req: Request, res: Response, next: Function) => {
+    const adminId = req.headers["x-admin-id"] as string;
+    if (!adminId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const admin = await storage.getUser(adminId);
+    if (!admin || !admin.isAdmin) {
+      return res.status(403).json({ error: "Forbidden - Admin access required" });
+    }
+    
+    next();
+  };
+
+  // Get admin settings
+  app.get("/api/admin/settings", checkAdmin, async (req, res) => {
+    try {
+      const currentSettings = await storage.getSettings();
+      res.json(currentSettings);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get settings" });
+    }
+  });
+
+  // Update win rate
+  app.post("/api/admin/settings/winrate", checkAdmin, async (req, res) => {
+    try {
+      const { winRatePercent } = req.body;
+      const adminId = req.headers["x-admin-id"] as string;
+      
+      if (winRatePercent < 0 || winRatePercent > 100) {
+        return res.status(400).json({ error: "Win rate must be between 0 and 100" });
+      }
+      
+      const updated = await storage.updateWinRate(winRatePercent, adminId);
+      res.json(updated);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update win rate" });
+    }
+  });
+
+  // Get pending withdrawals
+  app.get("/api/admin/withdrawals", checkAdmin, async (req, res) => {
+    try {
+      const pendingWithdrawals = await storage.getPendingWithdrawals();
+      res.json(pendingWithdrawals);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get withdrawals" });
+    }
+  });
+
+  // Get all withdrawals
+  app.get("/api/admin/withdrawals/all", checkAdmin, async (req, res) => {
+    try {
+      const allWithdrawals = await storage.getAllWithdrawals();
+      res.json(allWithdrawals);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get withdrawals" });
+    }
+  });
+
+  // Process withdrawal (approve/reject)
+  app.post("/api/admin/withdrawals/:id/process", checkAdmin, async (req, res) => {
+    try {
+      const { status } = req.body; // "approved" or "rejected"
+      const adminId = req.headers["x-admin-id"] as string;
+      
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      const withdrawal = await storage.processWithdrawal(req.params.id, status, adminId);
+      
+      if (!withdrawal) {
+        return res.status(404).json({ error: "Withdrawal not found" });
+      }
+      
+      // If rejected, refund the user
+      if (status === "rejected") {
+        const user = await storage.getUser(withdrawal.odejs);
+        if (user) {
+          await storage.updateUserBalance(withdrawal.odejs, user.balance + withdrawal.amount);
+        }
+      }
+      
+      res.json(withdrawal);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to process withdrawal" });
+    }
+  });
+
+  // Get all users (admin)
+  app.get("/api/admin/users", checkAdmin, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to get users" });
+    }
+  });
+
+  // Update user balance (admin)
+  app.post("/api/admin/users/:id/balance", checkAdmin, async (req, res) => {
+    try {
+      const { balance } = req.body;
+      const user = await storage.updateUserBalance(req.params.id, balance);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update balance" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Initialize WebSocket server
