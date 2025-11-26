@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Volume2, VolumeX, Music, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { useGameAudio, GameType } from "@/hooks/use-game-audio";
+import { useAudio, type GameType } from "./AudioProvider";
 
 interface AudioControlsProps {
   gameType?: GameType;
@@ -15,22 +16,23 @@ interface AudioControlsProps {
 export function AudioControls({ gameType = "lobby" }: AudioControlsProps) {
   const {
     settings,
+    setCurrentGame,
     toggleMusic,
     toggleSound,
     setMusicVolume,
     setSoundVolume,
-    resumeMusic,
-  } = useGameAudio(gameType);
+  } = useAudio();
+
+  useEffect(() => {
+    setCurrentGame(gameType);
+  }, [gameType, setCurrentGame]);
 
   return (
     <div className="flex items-center gap-1">
       <Button
         size="icon"
         variant="ghost"
-        onClick={() => {
-          toggleMusic();
-          resumeMusic();
-        }}
+        onClick={toggleMusic}
         className="h-8 w-8"
         data-testid="button-toggle-music"
       >

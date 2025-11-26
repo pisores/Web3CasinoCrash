@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TelegramProvider, useTelegram } from "@/components/TelegramProvider";
+import { AudioProvider } from "@/components/AudioProvider";
 import { GameLobby } from "@/pages/GameLobby";
 import { CrashGame } from "@/pages/CrashGame";
 import { MinesGame } from "@/pages/MinesGame";
@@ -156,8 +157,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <TelegramProvider>
-          <GameApp />
-          <Toaster />
+          <AudioProvider>
+            <GameApp />
+            <Toaster />
+          </AudioProvider>
         </TelegramProvider>
       </TooltipProvider>
     </QueryClientProvider>

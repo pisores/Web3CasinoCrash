@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BalanceDisplay } from "./BalanceDisplay";
 import { AudioControls } from "./AudioControls";
 import { useTelegram } from "./TelegramProvider";
-import { GameType } from "@/hooks/use-game-audio";
+import { type GameType } from "./AudioProvider";
 
 interface GameHeaderProps {
   title: string;
