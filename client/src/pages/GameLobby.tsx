@@ -34,10 +34,10 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
             data-testid="button-profile"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center">
-              {user?.photo_url ? (
+              {user?.photoUrl ? (
                 <img 
-                  src={user.photo_url} 
-                  alt={user.first_name} 
+                  src={user.photoUrl} 
+                  alt={user.firstName || "User"} 
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (
@@ -46,7 +46,7 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
             </div>
             <div className="flex flex-col text-left">
               <span className="text-sm font-medium text-foreground leading-tight">
-                {user?.first_name || "Player"}
+                {user?.firstName || "Player"}
               </span>
               <span className="text-xs text-muted-foreground leading-tight">
                 @{user?.username || "guest"}

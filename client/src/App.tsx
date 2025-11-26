@@ -65,6 +65,7 @@ function GameApp() {
       <ProfilePage
         balance={balance}
         onBack={handleBack}
+        onOpenAdmin={() => setCurrentScreen("admin")}
       />
     );
   }

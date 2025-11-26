@@ -54,11 +54,23 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 7. **Turtle Race** - Bet on winning turtle (3x payout)
 
 ## Database Schema
-- **users**: id, telegramId, username, firstName, lastName, balance, referralCode, referredBy, referralCount
+- **users**: id, telegramId, username, firstName, lastName, balance, referralCode, referredBy, referralCount, walletAddress, isAdmin, lastSeenAt
 - **bets**: id, userId, gameType, amount, multiplier, payout, isWin, gameData, createdAt
+- **withdrawals**: id, userId, amount, walletAddress, status, createdAt, processedAt, processedBy
+- **promo_codes**: id, code, bonusAmount, maxUses, currentUses, isActive, createdAt, createdBy
+- **admin_settings**: id, winRatePercent, updatedAt, updatedBy
 
 ## API Endpoints
+
+### User Endpoints
 - `POST /api/users/telegram` - Create/fetch user by Telegram ID
+- `PATCH /api/users/:id/balance` - Update user balance
+- `POST /api/users/:id/heartbeat` - Track user activity
+- `POST /api/users/:id/referral-code` - Generate referral code
+- `POST /api/users/:id/apply-referral` - Apply referral code (get $100 bonus)
+- `GET /api/users/:id/referral-stats` - Get referral statistics
+
+### Game Endpoints
 - `POST /api/games/crash/bet` - Place Crash game bet
 - `POST /api/games/crash/cashout` - Cash out from Crash
 - `POST /api/games/mines/start` - Start Mines game
@@ -69,9 +81,26 @@ A Telegram Mini App casino game featuring seven games (Crash, Mines, Dice, Slots
 - `POST /api/games/plinko/drop` - Drop Plinko ball
 - `POST /api/games/scissors/play` - Play Rock Paper Scissors
 - `POST /api/games/turtle/race` - Start Turtle Race
-- `POST /api/users/:id/referral-code` - Generate referral code
-- `POST /api/users/:id/apply-referral` - Apply referral code (get $100 bonus)
-- `GET /api/users/:id/referral-stats` - Get referral statistics
+
+### Wallet & Withdrawals
+- `POST /api/users/:id/wallet` - Set wallet address
+- `POST /api/users/:id/withdraw` - Request withdrawal
+- `GET /api/users/:id/withdrawals` - Get user's withdrawals
+- `POST /api/promo/apply` - Apply promo code
+
+### Admin Endpoints (requires x-admin-id header)
+- `GET /api/admin/settings` - Get admin settings
+- `POST /api/admin/settings/winrate` - Update win rate
+- `GET /api/admin/users` - Get all users
+- `GET /api/admin/users/active` - Get active users (last 24h)
+- `POST /api/admin/users/:id/balance` - Set user balance
+- `GET /api/admin/users/:id/bets` - Get user's bet history
+- `GET /api/admin/users/:id/withdrawals` - Get user's withdrawals
+- `GET /api/admin/withdrawals` - Get pending withdrawals
+- `POST /api/admin/withdrawals/:id/process` - Approve/reject withdrawal
+- `GET /api/admin/bets` - Get all recent bets
+- `GET /api/admin/promo-codes` - Get all promo codes
+- `POST /api/admin/promo-codes` - Create promo code
 
 ## Running the App
 The app runs on port 5000 via `npm run dev`
@@ -102,6 +131,11 @@ The app runs on port 5000 via `npm run dev`
 - **NEW**: Admin panel for withdrawal approvals/rejections
 - **NEW**: All game logic now uses shouldPlayerWin() to respect admin win rate settings
 - Fixed Dice game boundary validation for edge cases (targets 1-99/100)
+- **NEW**: Extended admin panel with tabs: Users, Withdrawals, Games History, Promo Codes, Settings
+- **NEW**: Active users tracking (online/today) with lastSeenAt timestamps
+- **NEW**: User detail view showing bet history and withdrawal history
+- **NEW**: Heartbeat system tracks user activity every 60 seconds
+- **NEW**: Deposit tab in Wallet showing TON address UQDLojwLKmB87iF5FrF79A8atSmbrMp2s9IWlPXfFQGoaWzs
 
 ## User Preferences
 - Dark theme by default (gaming aesthetic)

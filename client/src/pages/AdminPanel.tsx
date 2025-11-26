@@ -693,13 +693,13 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="w-5 h-5" />
-                  Настройки игр
+                  Настройки RTP
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">
-                    Процент выигрыша: {winRate}%
+                    RTP (Return to Player): {winRate}%
                   </label>
                   <div className="flex items-center gap-4">
                     <Slider
@@ -709,19 +709,45 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                       max={100}
                       step={1}
                       className="flex-1"
-                      data-testid="slider-win-rate"
+                      data-testid="slider-rtp"
                     />
                     <Button
                       onClick={() => updateWinRateMutation.mutate(winRate)}
                       disabled={updateWinRateMutation.isPending}
-                      data-testid="button-save-winrate"
+                      data-testid="button-save-rtp"
                     >
                       {updateWinRateMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Сохранить"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Чем ниже %, тем меньше шансов на выигрыш
+                    RTP определяет % возврата игрокам. Например: 50% = половина ставок возвращается игрокам
                   </p>
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setWinRate(30)}
+                      className={winRate === 30 ? "border-primary" : ""}
+                    >
+                      30% (Высокий доход)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setWinRate(50)}
+                      className={winRate === 50 ? "border-primary" : ""}
+                    >
+                      50% (Стандарт)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setWinRate(70)}
+                      className={winRate === 70 ? "border-primary" : ""}
+                    >
+                      70% (Щедрый)
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -421,17 +421,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newBalance = user.balance - data.amount + payout;
       await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet - use bracket notation to set user id field
-      const betData: any = {
+      // Record bet
+      await storage.createBet({
+        odejs: data.odejs,
         gameType: "dice",
         amount: data.amount,
         multiplier: isWin ? multiplier : 0,
         payout,
         isWin,
         gameData: JSON.stringify({ roll, target: data.target, isOver: data.isOver }),
-      };
-      betData["user" + "Id"] = data.odejs;
-      await storage.createBet(betData);
+      });
       
       // Broadcast to all players
       await broadcastBetResult(data.odejs, "dice", data.amount, payout, isWin);
@@ -492,17 +491,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newBalance = user.balance - data.amount + payout;
       await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet - use bracket notation to set user id field
-      const betData: any = {
+      // Record bet
+      await storage.createBet({
+        odejs: data.odejs,
         gameType: "slots",
         amount: data.amount,
         multiplier: result.multiplier,
         payout,
         isWin,
         gameData: JSON.stringify(result),
-      };
-      betData["user" + "Id"] = data.odejs;
-      await storage.createBet(betData);
+      });
       
       // Broadcast to all players
       await broadcastBetResult(data.odejs, "slots", data.amount, payout, isWin);
@@ -568,17 +566,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newBalance = user.balance - data.amount + payout;
       await storage.updateUserBalance(data.odejs, newBalance);
       
-      // Record bet - use bracket notation to set user id field
-      const betData: any = {
+      // Record bet
+      await storage.createBet({
+        odejs: data.odejs,
         gameType: "plinko",
         amount: data.amount,
         multiplier: result.multiplier,
         payout,
         isWin,
         gameData: JSON.stringify(result),
-      };
-      betData["user" + "Id"] = data.odejs;
-      await storage.createBet(betData);
+      });
       
       // Broadcast to all players
       await broadcastBetResult(data.odejs, "plinko", data.amount, payout, isWin);
@@ -640,17 +637,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newBalance = user.balance - amount + payout;
       await storage.updateUserBalance(odejs, newBalance);
       
-      // Record bet - use bracket notation to set user id field
-      const betData: any = {
+      // Record bet
+      await storage.createBet({
+        odejs,
         gameType: "scissors",
         amount,
         multiplier,
         payout,
         isWin,
         gameData: JSON.stringify({ playerChoice: choice, computerChoice, result }),
-      };
-      betData["user" + "Id"] = odejs;
-      await storage.createBet(betData);
+      });
       
       // Broadcast to all players
       await broadcastBetResult(odejs, "scissors", amount, payout, isWin);
@@ -711,17 +707,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newBalance = user.balance - amount + payout;
       await storage.updateUserBalance(odejs, newBalance);
       
-      // Record bet - use bracket notation to set user id field
-      const turtleBetData: any = {
+      // Record bet
+      await storage.createBet({
+        odejs,
         gameType: "turtle",
         amount,
         multiplier,
         payout,
         isWin,
         gameData: JSON.stringify({ selectedTurtle, winner, raceProgress }),
-      };
-      turtleBetData["user" + "Id"] = odejs;
-      await storage.createBet(turtleBetData);
+      });
       
       // Broadcast to all players
       await broadcastBetResult(odejs, "turtle", amount, payout, isWin);

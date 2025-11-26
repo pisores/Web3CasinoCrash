@@ -6,16 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useTelegram } from "@/components/TelegramProvider";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Copy, Users, Gift, Share2 } from "lucide-react";
+import { ArrowLeft, Copy, Users, Gift, Share2, Settings, Shield } from "lucide-react";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 
 interface ProfilePageProps {
   balance: number;
   onBack: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export function ProfilePage({ balance, onBack }: ProfilePageProps) {
+export function ProfilePage({ balance, onBack, onOpenAdmin }: ProfilePageProps) {
   const { user, hapticFeedback, shareGameResult, telegramUser } = useTelegram();
+  const isAdmin = user?.username === "nahalist" || user?.isAdmin;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [referralInput, setReferralInput] = useState("");
@@ -129,6 +131,29 @@ export function ProfilePage({ balance, onBack }: ProfilePageProps) {
             </div>
           </CardHeader>
         </Card>
+
+        {/* Admin Panel Link - only for @nahalist */}
+        {isAdmin && onOpenAdmin && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardContent className="pt-4">
+              <Button
+                className="w-full"
+                variant="default"
+                onClick={() => {
+                  hapticFeedback("medium");
+                  onOpenAdmin();
+                }}
+                data-testid="button-admin-panel"
+              >
+                <Shield className="w-5 h-5 mr-2" />
+                Админ-панель
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Управление казино, пользователями и настройками
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Referral Stats */}
         <Card>
