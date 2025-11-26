@@ -1365,6 +1365,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ POKER ENDPOINTS ============
+
+  // Get all poker tables
+  app.get("/api/poker/tables", async (req, res) => {
+    try {
+      const tables = await storage.getPokerTables();
+      res.json(tables);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get poker tables" });
+    }
+  });
+
+  // Get specific poker table
+  app.get("/api/poker/tables/:id", async (req, res) => {
+    try {
+      const table = await storage.getPokerTable(req.params.id);
+      if (!table) {
+        return res.status(404).json({ error: "Table not found" });
+      }
+      res.json(table);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get poker table" });
+    }
+  });
+
+  // Sit at poker table
+  app.post("/api/poker/tables/:id/sit", async (req, res) => {
+    try {
+      const { odejs, buyIn } = req.body;
+      const tableId = req.params.id;
+
+      const table = await storage.getPokerTable(tableId);
+      if (!table) {
+        return res.status(404).json({ error: "Table not found" });
+      }
+
+      // Validate buy-in
+      if (buyIn < table.minBuyIn || buyIn > table.maxBuyIn) {
+        return res.status(400).json({ error: "Invalid buy-in amount" });
+      }
+
+      // Check user balance
+      const user = await storage.getUser(odejs);
+      if (!user || user.balance < buyIn) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+
+      // Find available seat
+      const seats = await storage.getTableSeats(tableId);
+      const takenSeats = new Set(seats.map(s => s.seatNumber));
+      let availableSeat = -1;
+      for (let i = 0; i < table.maxSeats; i++) {
+        if (!takenSeats.has(i)) {
+          availableSeat = i;
+          break;
+        }
+      }
+
+      if (availableSeat === -1) {
+        return res.status(400).json({ error: "Table is full" });
+      }
+
+      // Deduct buy-in from balance
+      await storage.updateBalance(odejs, -buyIn, "poker_buyin", `Poker buy-in at ${table.name}`);
+
+      // Add player to table
+      await storage.addPlayerToTable(tableId, odejs, availableSeat, buyIn);
+      await storage.updateTablePlayerCount(tableId, seats.length + 1);
+
+      res.json({ seatNumber: availableSeat, chipStack: buyIn });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to sit at table" });
+    }
+  });
+
+  // Leave poker table
+  app.post("/api/poker/tables/:id/leave", async (req, res) => {
+    try {
+      const { odejs, seatNumber } = req.body;
+      const tableId = req.params.id;
+
+      // Get player's chip stack
+      const seat = await storage.getPlayerSeat(tableId, odejs);
+      if (!seat) {
+        return res.status(400).json({ error: "Not at table" });
+      }
+
+      // Return chips to balance
+      if (seat.chipStack > 0) {
+        await storage.updateBalance(odejs, seat.chipStack, "poker_cashout", `Poker cashout`);
+      }
+
+      // Remove from table
+      await storage.removePlayerFromTable(tableId, odejs);
+      
+      const seats = await storage.getTableSeats(tableId);
+      await storage.updateTablePlayerCount(tableId, seats.length);
+
+      res.json({ success: true, returned: seat.chipStack });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to leave table" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Initialize WebSocket server

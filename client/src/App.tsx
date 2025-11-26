@@ -13,17 +13,30 @@ import { SlotsGame } from "@/pages/SlotsGame";
 import { PlinkoGame } from "@/pages/PlinkoGame";
 import { ScissorsGame } from "@/pages/ScissorsGame";
 import { TurtleRaceGame } from "@/pages/TurtleRaceGame";
+import { PokerLobby } from "@/pages/PokerLobby";
+import { PokerTable } from "@/pages/PokerTable";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { WalletPage } from "@/pages/WalletPage";
 import AdminPanel from "@/pages/AdminPanel";
-import { type GameType } from "@shared/schema";
+import { type GameType, type PokerTable as PokerTableType } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 
-type Screen = GameType | "profile" | "wallet" | "admin" | null;
+type Screen = GameType | "profile" | "wallet" | "admin" | "poker_table" | null;
+
+interface SelectedPokerTable {
+  id: string;
+  name: string;
+  smallBlind: number;
+  bigBlind: number;
+  minBuyIn: number;
+  maxBuyIn: number;
+  maxSeats: number;
+}
 
 function GameApp() {
   const { isReady, isLoading, user, updateBalance, refetchUser } = useTelegram();
   const [currentScreen, setCurrentScreen] = useState<Screen>(null);
+  const [selectedPokerTable, setSelectedPokerTable] = useState<SelectedPokerTable | null>(null);
 
   const handleBalanceChange = (newBalance: number) => {
     updateBalance(Math.max(0, newBalance));
@@ -137,6 +150,57 @@ function GameApp() {
         balance={balance}
         onBalanceChange={handleBalanceChange}
         onBack={handleBack}
+      />
+    );
+  }
+
+  if (currentScreen === "poker") {
+    return (
+      <PokerLobby
+        balance={balance}
+        onBack={handleBack}
+        onJoinTable={async (tableId) => {
+          try {
+            const res = await fetch(`/api/poker/tables/${tableId}`);
+            if (res.ok) {
+              const table = await res.json();
+              setSelectedPokerTable({
+                id: table.id,
+                name: table.name,
+                smallBlind: table.smallBlind,
+                bigBlind: table.bigBlind,
+                minBuyIn: table.minBuyIn,
+                maxBuyIn: table.maxBuyIn,
+                maxSeats: table.maxSeats,
+              });
+              setCurrentScreen("poker_table");
+            }
+          } catch (error) {
+            console.error("Failed to get table:", error);
+          }
+        }}
+        onOpenWallet={() => setCurrentScreen("wallet")}
+      />
+    );
+  }
+
+  if (currentScreen === "poker_table" && selectedPokerTable) {
+    return (
+      <PokerTable
+        tableId={selectedPokerTable.id}
+        tableName={selectedPokerTable.name}
+        balance={balance}
+        smallBlind={selectedPokerTable.smallBlind}
+        bigBlind={selectedPokerTable.bigBlind}
+        minBuyIn={selectedPokerTable.minBuyIn}
+        maxBuyIn={selectedPokerTable.maxBuyIn}
+        maxSeats={selectedPokerTable.maxSeats}
+        onBack={() => {
+          setSelectedPokerTable(null);
+          setCurrentScreen("poker");
+          refetchUser();
+        }}
+        onBalanceChange={handleBalanceChange}
       />
     );
   }

@@ -24,10 +24,11 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="px-4 py-3 flex items-center justify-between gap-4">
-          {/* User Info - clickable for profile */}
+          {/* User Avatar - clickable for profile */}
           <Button 
             variant="ghost" 
-            className="flex items-center gap-3 p-0 h-auto hover:bg-transparent"
+            size="icon"
+            className="w-10 h-10 p-0 rounded-full overflow-hidden"
             onClick={() => {
               hapticFeedback("light");
               onOpenProfile();
@@ -44,14 +45,6 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
               ) : (
                 <User className="w-5 h-5 text-primary-foreground" />
               )}
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-medium text-foreground leading-tight">
-                {user?.firstName || "Player"}
-              </span>
-              <span className="text-xs text-muted-foreground leading-tight">
-                @{user?.username || "guest"}
-              </span>
             </div>
           </Button>
 

@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, type PromoCode, type InsertPromoCode, type PromoCodeUsage, type BalanceHistory, users, bets, withdrawals, settings, promoCodes, promoCodeUsage, balanceHistory } from "@shared/schema";
+import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, type PromoCode, type InsertPromoCode, type PromoCodeUsage, type BalanceHistory, type PokerTable, type PokerSeat, users, bets, withdrawals, settings, promoCodes, promoCodeUsage, balanceHistory, pokerTables, pokerSeats } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -39,6 +39,16 @@ export interface IStorage {
   getBalanceHistory(odejs: string, limit?: number): Promise<BalanceHistory[]>;
   getAllBalanceHistory(limit?: number): Promise<BalanceHistory[]>;
   getUserWithdrawals(odejs: string): Promise<Withdrawal[]>;
+  // Poker
+  getPokerTables(): Promise<PokerTable[]>;
+  getPokerTable(id: string): Promise<PokerTable | undefined>;
+  getTableSeats(tableId: string): Promise<PokerSeat[]>;
+  getPlayerSeat(tableId: string, odejs: string): Promise<PokerSeat | undefined>;
+  addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat>;
+  removePlayerFromTable(tableId: string, odejs: string): Promise<void>;
+  updateTablePlayerCount(tableId: string, count: number): Promise<void>;
+  updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void>;
+  updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -217,6 +227,63 @@ export class DatabaseStorage implements IStorage {
 
   async getUserWithdrawals(odejs: string): Promise<Withdrawal[]> {
     return db.select().from(withdrawals).where(eq(withdrawals.odejs, odejs)).orderBy(desc(withdrawals.createdAt));
+  }
+
+  // ============ POKER FUNCTIONS ============
+
+  async getPokerTables(): Promise<PokerTable[]> {
+    return db.select().from(pokerTables).where(eq(pokerTables.isActive, true)).orderBy(pokerTables.bigBlind);
+  }
+
+  async getPokerTable(id: string): Promise<PokerTable | undefined> {
+    const [table] = await db.select().from(pokerTables).where(eq(pokerTables.id, id));
+    return table;
+  }
+
+  async getTableSeats(tableId: string): Promise<PokerSeat[]> {
+    return db.select().from(pokerSeats).where(and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.isActive, true)));
+  }
+
+  async getPlayerSeat(tableId: string, odejs: string): Promise<PokerSeat | undefined> {
+    const [seat] = await db.select().from(pokerSeats).where(
+      and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
+    );
+    return seat;
+  }
+
+  async addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat> {
+    const [seat] = await db.insert(pokerSeats).values({
+      tableId,
+      odejs,
+      seatNumber,
+      chipStack,
+    }).returning();
+    return seat;
+  }
+
+  async removePlayerFromTable(tableId: string, odejs: string): Promise<void> {
+    await db.update(pokerSeats)
+      .set({ isActive: false })
+      .where(and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs)));
+  }
+
+  async updateTablePlayerCount(tableId: string, count: number): Promise<void> {
+    await db.update(pokerTables).set({ currentPlayers: count }).where(eq(pokerTables.id, tableId));
+  }
+
+  async updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void> {
+    await db.update(pokerSeats)
+      .set({ chipStack })
+      .where(and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true)));
+  }
+
+  async updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined> {
+    const user = await this.getUser(odejs);
+    if (!user) return undefined;
+    const newBalance = Math.max(0, user.balance + amount);
+    await this.updateUserBalance(odejs, newBalance);
+    await this.addBalanceHistory(odejs, amount, newBalance, type, description);
+    return this.getUser(odejs);
   }
 }
 
@@ -479,6 +546,48 @@ export class MemStorage implements IStorage {
     return Array.from(this.withdrawalsMap.values())
       .filter(w => w.odejs === odejs)
       .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  // Poker stub methods for MemStorage (in-memory implementation not used for poker)
+  async getPokerTables(): Promise<PokerTable[]> {
+    return [];
+  }
+
+  async getPokerTable(id: string): Promise<PokerTable | undefined> {
+    return undefined;
+  }
+
+  async getTableSeats(tableId: string): Promise<PokerSeat[]> {
+    return [];
+  }
+
+  async getPlayerSeat(tableId: string, odejs: string): Promise<PokerSeat | undefined> {
+    return undefined;
+  }
+
+  async addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat> {
+    throw new Error("Poker not supported in MemStorage");
+  }
+
+  async removePlayerFromTable(tableId: string, odejs: string): Promise<void> {
+    // Not supported
+  }
+
+  async updateTablePlayerCount(tableId: string, count: number): Promise<void> {
+    // Not supported
+  }
+
+  async updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void> {
+    // Not supported
+  }
+
+  async updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined> {
+    const user = this.users.get(odejs);
+    if (!user) return undefined;
+    const newBalance = Math.max(0, user.balance + amount);
+    const updated = { ...user, balance: newBalance };
+    this.users.set(odejs, updated);
+    return updated;
   }
 }
 
