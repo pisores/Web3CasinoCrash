@@ -83,6 +83,37 @@ export const settings = pgTable("settings", {
 
 export type Settings = typeof settings.$inferSelect;
 
+// Promo codes table
+export const promoCodes = pgTable("promo_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  bonusAmount: real("bonus_amount").notNull(),
+  maxUses: integer("max_uses").default(0),
+  currentUses: integer("current_uses").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: text("created_by"),
+});
+
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({
+  id: true,
+  createdAt: true,
+  currentUses: true,
+});
+
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+
+// User promo code usage tracking
+export const promoCodeUsage = pgTable("promo_code_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  odejs: text("user_id").notNull(),
+  promoCodeId: text("promo_code_id").notNull(),
+  usedAt: timestamp("used_at").defaultNow(),
+});
+
+export type PromoCodeUsage = typeof promoCodeUsage.$inferSelect;
+
 // Game configuration
 export interface GameConfig {
   id: GameType;

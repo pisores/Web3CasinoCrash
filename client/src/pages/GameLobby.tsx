@@ -3,7 +3,7 @@ import { GameCard } from "@/components/GameCard";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { LiveFeed, OnlineCounter } from "@/components/LiveFeed";
 import { useTelegram } from "@/components/TelegramProvider";
-import { Trophy, User, Gift, Wallet, Settings } from "lucide-react";
+import { Trophy, User, Gift, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface GameLobbyProps {
@@ -57,18 +57,6 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
           {/* Online Counter & Balance */}
           <div className="flex items-center gap-2">
             <OnlineCounter />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                hapticFeedback("light");
-                onOpenWallet();
-              }}
-              className="w-9 h-9"
-              data-testid="button-wallet"
-            >
-              <Wallet className="w-5 h-5" />
-            </Button>
             {isAdmin && (
               <Button
                 variant="ghost"
@@ -83,7 +71,14 @@ export function GameLobby({ balance, onSelectGame, onOpenProfile, onOpenWallet, 
                 <Settings className="w-5 h-5" />
               </Button>
             )}
-            <BalanceDisplay balance={balance} />
+            <BalanceDisplay 
+              balance={balance} 
+              onClick={() => {
+                hapticFeedback("light");
+                onOpenWallet();
+              }}
+              currency="USDT"
+            />
           </div>
         </div>
       </header>

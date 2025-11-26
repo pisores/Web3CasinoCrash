@@ -1,6 +1,6 @@
-import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, users, bets, withdrawals, settings } from "@shared/schema";
+import { type User, type InsertUser, type Bet, type InsertBet, type Withdrawal, type InsertWithdrawal, type Settings, type PromoCode, type InsertPromoCode, type PromoCodeUsage, users, bets, withdrawals, settings, promoCodes, promoCodeUsage } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -23,6 +23,14 @@ export interface IStorage {
   getSettings(): Promise<Settings>;
   updateWinRate(winRatePercent: number, updatedBy: string): Promise<Settings>;
   getAllUsers(): Promise<User[]>;
+  // Promo codes
+  getPromoCode(code: string): Promise<PromoCode | undefined>;
+  getPromoCodeById(id: string): Promise<PromoCode | undefined>;
+  createPromoCode(promoCode: InsertPromoCode): Promise<PromoCode>;
+  getAllPromoCodes(): Promise<PromoCode[]>;
+  incrementPromoCodeUsage(id: string): Promise<PromoCode | undefined>;
+  checkPromoCodeUsage(odejs: string, promoCodeId: string): Promise<boolean>;
+  recordPromoCodeUsage(odejs: string, promoCodeId: string): Promise<PromoCodeUsage>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -128,6 +136,47 @@ export class DatabaseStorage implements IStorage {
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users).orderBy(desc(users.balance));
   }
+
+  // Promo codes
+  async getPromoCode(code: string): Promise<PromoCode | undefined> {
+    const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.code, code));
+    return promo;
+  }
+
+  async getPromoCodeById(id: string): Promise<PromoCode | undefined> {
+    const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.id, id));
+    return promo;
+  }
+
+  async createPromoCode(insertPromoCode: InsertPromoCode): Promise<PromoCode> {
+    const [promo] = await db.insert(promoCodes).values(insertPromoCode).returning();
+    return promo;
+  }
+
+  async getAllPromoCodes(): Promise<PromoCode[]> {
+    return db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+  }
+
+  async incrementPromoCodeUsage(id: string): Promise<PromoCode | undefined> {
+    const current = await this.getPromoCodeById(id);
+    if (!current) return undefined;
+    const [promo] = await db.update(promoCodes)
+      .set({ currentUses: (current.currentUses || 0) + 1 })
+      .where(eq(promoCodes.id, id))
+      .returning();
+    return promo;
+  }
+
+  async checkPromoCodeUsage(odejs: string, promoCodeId: string): Promise<boolean> {
+    const [usage] = await db.select().from(promoCodeUsage)
+      .where(and(eq(promoCodeUsage.odejs, odejs), eq(promoCodeUsage.promoCodeId, promoCodeId)));
+    return !!usage;
+  }
+
+  async recordPromoCodeUsage(odejs: string, promoCodeId: string): Promise<PromoCodeUsage> {
+    const [usage] = await db.insert(promoCodeUsage).values({ odejs, promoCodeId }).returning();
+    return usage;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -135,12 +184,16 @@ export class MemStorage implements IStorage {
   private bets: Map<string, Bet>;
   private withdrawalsMap: Map<string, Withdrawal>;
   private settingsData: Settings;
+  private promoCodesMap: Map<string, PromoCode>;
+  private promoCodeUsageMap: Map<string, PromoCodeUsage>;
 
   constructor() {
     this.users = new Map();
     this.bets = new Map();
     this.withdrawalsMap = new Map();
     this.settingsData = { id: "global", winRatePercent: 50, updatedAt: new Date(), updatedBy: null };
+    this.promoCodesMap = new Map();
+    this.promoCodeUsageMap = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -286,6 +339,54 @@ export class MemStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return Array.from(this.users.values()).sort((a, b) => b.balance - a.balance);
+  }
+
+  // Promo codes for MemStorage
+  async getPromoCode(code: string): Promise<PromoCode | undefined> {
+    return Array.from(this.promoCodesMap.values()).find(p => p.code === code);
+  }
+
+  async getPromoCodeById(id: string): Promise<PromoCode | undefined> {
+    return this.promoCodesMap.get(id);
+  }
+
+  async createPromoCode(insertPromoCode: InsertPromoCode): Promise<PromoCode> {
+    const id = randomUUID();
+    const promo: PromoCode = {
+      ...insertPromoCode,
+      id,
+      currentUses: 0,
+      createdAt: new Date(),
+    };
+    this.promoCodesMap.set(id, promo);
+    return promo;
+  }
+
+  async getAllPromoCodes(): Promise<PromoCode[]> {
+    return Array.from(this.promoCodesMap.values()).sort((a, b) => 
+      (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+    );
+  }
+
+  async incrementPromoCodeUsage(id: string): Promise<PromoCode | undefined> {
+    const promo = this.promoCodesMap.get(id);
+    if (!promo) return undefined;
+    const updated = { ...promo, currentUses: (promo.currentUses || 0) + 1 };
+    this.promoCodesMap.set(id, updated);
+    return updated;
+  }
+
+  async checkPromoCodeUsage(odejs: string, promoCodeId: string): Promise<boolean> {
+    const key = `${odejs}-${promoCodeId}`;
+    return this.promoCodeUsageMap.has(key);
+  }
+
+  async recordPromoCodeUsage(odejs: string, promoCodeId: string): Promise<PromoCodeUsage> {
+    const id = randomUUID();
+    const usage: PromoCodeUsage = { id, odejs, promoCodeId, usedAt: new Date() };
+    const key = `${odejs}-${promoCodeId}`;
+    this.promoCodeUsageMap.set(key, usage);
+    return usage;
   }
 }
 
