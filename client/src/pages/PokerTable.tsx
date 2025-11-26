@@ -7,7 +7,7 @@ import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { useTelegram } from "@/components/TelegramProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
-import pokerTableImage from "@assets/generated_images/horizontal_poker_table_top_view.png";
+import pokerTableImage from "@assets/generated_images/horizontal_oval_2d_poker_table.png";
 
 interface PokerTableProps {
   tableId: string;
@@ -371,13 +371,6 @@ export function PokerTable({
               alt="Poker Table" 
               className="w-full h-full object-contain"
             />
-            
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center opacity-20">
-                <div className="text-emerald-500 text-xl font-bold font-serif">PapaPoker</div>
-                <div className="text-emerald-600 text-xs">TEXAS HOLD'EM</div>
-              </div>
-            </div>
 
             {gameState?.pot !== undefined && gameState.pot > 0 && (
               <div className="absolute top-[35%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
