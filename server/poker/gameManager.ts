@@ -128,6 +128,38 @@ class PokerTableManager {
     // Clear any zero stack timer for this player
     this.clearZeroStackTimer(tableId, seatNumber);
 
+    // If hand is active, fold the leaving player first
+    if (hand.status !== "waiting" && !player.isFolded) {
+      console.log(`Player ${player.odejs} leaving during active hand - auto-folding`);
+      player.isFolded = true;
+      
+      // If it was their turn, clear timer
+      if (hand.currentTurn === seatNumber) {
+        this.clearTurnTimer(hand);
+      }
+      
+      // Check if only one player remains - they win the pot
+      const activePlayers = Array.from(hand.players.values()).filter(p => !p.isFolded);
+      if (activePlayers.length === 1) {
+        console.log(`Only one player remaining - awarding pot to ${activePlayers[0].odejs}`);
+        this.awardPot(hand, activePlayers[0]);
+        this.endHandAndRemovePlayer(tableId, seatNumber, player.chipStack, player.odejs);
+        return true;
+      }
+      
+      // If it was this player's turn, move to next player
+      if (hand.currentTurn === seatNumber) {
+        this.moveToNextPlayer(hand);
+        if (hand.currentTurn) {
+          this.startTurnTimer(tableId);
+        } else if (this.isStreetComplete(hand)) {
+          this.advanceStreet(hand);
+          // advanceStreet handles turn assignment and showdown
+        }
+        this.broadcastState(tableId);
+      }
+    }
+
     // Return chips to player balance
     if (player.chipStack > 0) {
       this.onBalanceChange(player.odejs, player.chipStack);
@@ -136,6 +168,35 @@ class PokerTableManager {
     hand.players.delete(seatNumber);
     this.broadcastState(tableId);
     return true;
+  }
+
+  private endHandAndRemovePlayer(tableId: string, seatNumber: number, chipStack: number, odejs: string): void {
+    const hand = this.tables.get(tableId);
+    if (!hand) return;
+
+    this.clearTurnTimer(hand);
+    hand.status = "waiting";
+    hand.currentTurn = null;
+
+    // Return chips to leaving player
+    if (chipStack > 0) {
+      this.onBalanceChange(odejs, chipStack);
+    }
+
+    // Remove the player
+    hand.players.delete(seatNumber);
+
+    // Check for players with zero chips - start kick timers
+    this.checkZeroStackPlayers(hand);
+
+    this.broadcastState(tableId);
+
+    // Auto-start next hand after delay if enough players
+    setTimeout(() => {
+      if (this.canStartHand(tableId)) {
+        this.startNewHand(tableId);
+      }
+    }, 3000);
   }
 
   // Rebuy - add chips to player's stack and cancel kick timer
