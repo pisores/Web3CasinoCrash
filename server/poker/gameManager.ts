@@ -196,7 +196,7 @@ class PokerTableManager {
       if (this.canStartHand(tableId)) {
         this.startNewHand(tableId);
       }
-    }, 3000);
+    }, 1500);
   }
 
   // Rebuy - add chips to player's stack and cancel kick timer
@@ -593,7 +593,7 @@ class PokerTableManager {
       if (this.canStartHand(tableId)) {
         this.startNewHand(tableId);
       }
-    }, 3000);
+    }, 1500);
   }
 
   private startTurnTimer(tableId: string): void {

@@ -266,7 +266,7 @@ class GameWebSocket {
           console.log(`Starting new hand at table ${tableId} after player sync`);
           setTimeout(() => {
             pokerManager.startNewHand(tableId);
-          }, 1500);
+          }, 500);
         }
       }
     } catch (e) {
@@ -331,7 +331,7 @@ class GameWebSocket {
       if (pokerManager.canStartHand(tableId)) {
         setTimeout(() => {
           pokerManager.startNewHand(tableId);
-        }, 2000);
+        }, 800);
       }
     } else {
       client.ws.send(JSON.stringify({ 
