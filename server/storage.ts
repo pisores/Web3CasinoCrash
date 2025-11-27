@@ -48,6 +48,7 @@ export interface IStorage {
   removePlayerFromTable(tableId: string, odejs: string): Promise<void>;
   updateTablePlayerCount(tableId: string, count: number): Promise<void>;
   updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void>;
+  updateSeatChipStack(tableId: string, seatNumber: number, chipStack: number): Promise<void>;
   updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined>;
 }
 
@@ -277,6 +278,12 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true)));
   }
 
+  async updateSeatChipStack(tableId: string, seatNumber: number, chipStack: number): Promise<void> {
+    await db.update(pokerSeats)
+      .set({ chipStack })
+      .where(and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.seatNumber, seatNumber), eq(pokerSeats.isActive, true)));
+  }
+
   async updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined> {
     const user = await this.getUser(odejs);
     if (!user) return undefined;
@@ -379,6 +386,15 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     
     const updatedUser = { ...user, referralCount: (user.referralCount || 0) + 1 };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserAdmin(id: string, isAdmin: boolean): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, isAdmin };
     this.users.set(id, updatedUser);
     return updatedUser;
   }
@@ -578,6 +594,10 @@ export class MemStorage implements IStorage {
   }
 
   async updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void> {
+    // Not supported
+  }
+
+  async updateSeatChipStack(tableId: string, seatNumber: number, chipStack: number): Promise<void> {
     // Not supported
   }
 

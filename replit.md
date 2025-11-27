@@ -94,6 +94,7 @@ A Telegram Mini App casino game featuring eight games (Poker, Crash, Mines, Dice
 - `GET /api/poker/tables/:id` - Get specific table info
 - `POST /api/poker/tables/:id/sit` - Sit at table with buy-in
 - `POST /api/poker/tables/:id/leave` - Leave table and cash out
+- `POST /api/poker/tables/:id/rebuy` - Add chips when stack is zero
 
 ### Wallet & Withdrawals
 - `POST /api/users/:id/wallet` - Set wallet address
@@ -167,6 +168,11 @@ The app runs on port 5000 via `npm run dev`
 - **NEW**: PokerTable with dark blue SVG table showing "PapaPoker" branding
 - **NEW**: Buy-in dialog with slider for selecting amount
 - **NEW**: Sit Out status when player is alone at table
+- **NEW**: Back button returns to poker lobby without leaving table seat
+- **NEW**: Separate "Встать" (Stand Up) button to leave table
+- **NEW**: Zero stack auto-kick: 10 seconds to rebuy or get kicked from table
+- **NEW**: Rebuy dialog with countdown timer when stack hits zero
+- **FIX**: Seat remains occupied until player explicitly leaves
 
 ## Audio System
 - `AudioProvider` context wraps the app for global audio state

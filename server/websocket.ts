@@ -46,6 +46,22 @@ class GameWebSocket {
         if (user) {
           await storage.updateUserBalance(odejs, user.balance + amount);
         }
+      },
+      async (tableId, odejs, seatNumber) => {
+        // Player was kicked for having zero chips and not rebuying
+        console.log(`Player ${odejs} kicked from table ${tableId} seat ${seatNumber}`);
+        
+        // Clean up database
+        await storage.removePlayerFromTable(tableId, odejs);
+        const seats = await storage.getTableSeats(tableId);
+        await storage.updateTablePlayerCount(tableId, seats.length);
+        
+        // Notify the kicked player
+        this.broadcastToPlayer(tableId, odejs, {
+          type: "kicked",
+          reason: "zero_chips",
+          message: "Вы были удалены из-за нулевого баланса"
+        });
       }
     );
 
@@ -266,6 +282,18 @@ class GameWebSocket {
           type: "poker_state", 
           state: personalizedState 
         }));
+      }
+    });
+  }
+
+  private broadcastToPlayer(tableId: string, odejs: string, data: any) {
+    const subscribers = this.tableSubscriptions.get(tableId);
+    if (!subscribers) return;
+
+    Array.from(subscribers).forEach(clientId => {
+      const client = this.clients.get(clientId);
+      if (client && client.odejs === odejs && client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(JSON.stringify(data));
       }
     });
   }

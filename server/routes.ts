@@ -1407,8 +1407,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check user balance
+      console.log("Poker sit - odejs:", odejs, "buyIn:", buyIn);
       const user = await storage.getUser(odejs);
+      console.log("User found:", user ? `id=${user.id}, balance=${user.balance}` : "null");
       if (!user || user.balance < buyIn) {
+        console.log("Validation failed:", !user ? "no user" : `balance ${user.balance} < buyIn ${buyIn}`);
         return res.status(400).json({ error: "Insufficient balance" });
       }
 
@@ -1474,6 +1477,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, returned: seat.chipStack });
     } catch (error) {
       res.status(500).json({ error: "Failed to leave table" });
+    }
+  });
+
+  // Rebuy - add chips when player has zero stack
+  app.post("/api/poker/tables/:id/rebuy", async (req, res) => {
+    try {
+      const { odejs, amount } = req.body;
+      const tableId = req.params.id;
+
+      // Get table info
+      const table = await storage.getPokerTable(tableId);
+      if (!table) {
+        return res.status(404).json({ error: "Table not found" });
+      }
+
+      // Validate rebuy amount
+      if (amount < table.minBuyIn || amount > table.maxBuyIn) {
+        return res.status(400).json({ error: "Invalid rebuy amount" });
+      }
+
+      // Check user balance
+      const user = await storage.getUser(odejs);
+      if (!user || user.balance < amount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+
+      // Get player's seat
+      const seat = await storage.getPlayerSeat(tableId, odejs);
+      if (!seat) {
+        return res.status(400).json({ error: "Not at table" });
+      }
+
+      // Deduct from balance
+      await storage.updateBalance(odejs, -amount, "poker_rebuy", `Poker rebuy at ${table.name}`);
+
+      // Let manager calculate the new stack (in-memory is source of truth during game)
+      let newStack = seat.chipStack + amount;
+      
+      const { getPokerManager } = await import("./poker/gameManager");
+      try {
+        const manager = getPokerManager();
+        const managerStack = manager.rebuy(tableId, seat.seatNumber, amount);
+        if (managerStack !== null) {
+          newStack = managerStack;
+        }
+      } catch (e) {
+        // Manager may not be initialized - use calculated stack
+      }
+
+      // Sync DB with the new stack from manager
+      await storage.updateSeatChipStack(tableId, seat.seatNumber, newStack);
+
+      res.json({ success: true, newStack });
+    } catch (error) {
+      console.error("Rebuy error:", error);
+      res.status(500).json({ error: "Failed to rebuy" });
     }
   });
 

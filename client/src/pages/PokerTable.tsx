@@ -212,6 +212,9 @@ export function PokerTable({
   const [buyInAmount, setBuyInAmount] = useState(minBuyIn);
   const [betAmount, setBetAmount] = useState(bigBlind);
   const [showBuyIn, setShowBuyIn] = useState(false);
+  const [showRebuy, setShowRebuy] = useState(false);
+  const [rebuyAmount, setRebuyAmount] = useState(minBuyIn);
+  const [kickCountdown, setKickCountdown] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -243,7 +246,28 @@ export function PokerTable({
           console.log("Found my player:", me);
           setMySeat(me.seatNumber);
           setChipStack(me.chipStack);
+          
+          // Check if stack is zero and hand is over - show rebuy dialog with countdown
+          if (me.chipStack <= 0 && data.state.status === "waiting" && !showRebuy) {
+            setShowRebuy(true);
+            setRebuyAmount(minBuyIn);
+            setKickCountdown(10);
+          }
+        } else if (mySeat !== null) {
+          // We were removed from the table
+          setMySeat(null);
+          setChipStack(0);
+          setShowRebuy(false);
+          setKickCountdown(null);
         }
+      }
+
+      if (data.type === "kicked") {
+        toast({ title: data.message || "Вы были удалены со стола", variant: "destructive" });
+        setMySeat(null);
+        setChipStack(0);
+        setShowRebuy(false);
+        setKickCountdown(null);
       }
 
       if (data.type === "error") {
@@ -259,6 +283,59 @@ export function PokerTable({
       ws.close();
     };
   }, [tableId, user?.id]);
+
+  // Countdown timer for kick
+  useEffect(() => {
+    if (kickCountdown === null || kickCountdown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setKickCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [kickCountdown]);
+
+  // Handle rebuy
+  const handleRebuy = async () => {
+    if (mySeat === null) return;
+    
+    if (rebuyAmount > balance) {
+      toast({ title: "Недостаточно средств", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/poker/tables/${tableId}/rebuy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          odejs: user?.id,
+          amount: rebuyAmount,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to rebuy");
+      }
+
+      const data = await res.json();
+      setChipStack(data.newStack);
+      onBalanceChange(balance - rebuyAmount);
+      setShowRebuy(false);
+      setKickCountdown(null);
+      hapticFeedback("medium");
+      toast({ title: `Докупка успешна: $${rebuyAmount.toFixed(2)}` });
+    } catch (error: any) {
+      console.error("Rebuy error:", error);
+      toast({ title: error.message || "Ошибка докупки", variant: "destructive" });
+    }
+  };
 
   const sendAction = useCallback((action: PokerAction, amount?: number) => {
     if (!wsRef.current || !isMyTurn) return;
@@ -340,11 +417,12 @@ export function PokerTable({
     }
   };
 
-  const handleLeave = async () => {
-    if (mySeat === null) {
-      onBack();
-      return;
-    }
+  const handleBack = () => {
+    onBack();
+  };
+
+  const handleStandUp = async () => {
+    if (mySeat === null) return;
 
     if (gameState && gameState.status !== "waiting") {
       toast({ title: "Дождитесь окончания раздачи", variant: "destructive" });
@@ -369,11 +447,12 @@ export function PokerTable({
       if (res.ok) {
         const data = await res.json();
         onBalanceChange(balance + (data.returned || 0));
+        setMySeat(null);
+        setChipStack(0);
+        toast({ title: "Вы встали из-за стола" });
       }
-      onBack();
     } catch (error) {
-      toast({ title: "Ошибка выхода", variant: "destructive" });
-      onBack();
+      toast({ title: "Ошибка", variant: "destructive" });
     }
   };
 
@@ -385,7 +464,7 @@ export function PokerTable({
             variant="ghost"
             size="icon"
             className="w-8 h-8"
-            onClick={handleLeave}
+            onClick={handleBack}
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -559,8 +638,17 @@ export function PokerTable({
         )}
 
         {mySeat !== null && !isMyTurn && (
-          <div className="px-3 py-2 text-center">
-            <span className="text-zinc-500 text-sm">Ваш стек: ${chipStack.toFixed(2)}</span>
+          <div className="px-3 py-2 flex items-center justify-between">
+            <span className="text-zinc-400 text-sm">Ваш стек: ${chipStack.toFixed(2)}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStandUp}
+              className="text-red-400 border-red-400/50 hover:bg-red-500/10"
+              data-testid="button-stand-up"
+            >
+              Встать
+            </Button>
           </div>
         )}
       </div>
@@ -605,6 +693,66 @@ export function PokerTable({
                 disabled={buyInAmount > balance}
               >
                 Сесть ${buyInAmount.toFixed(2)}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRebuy && mySeat !== null && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-sm space-y-4 border border-red-700">
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-white">Докупка</h2>
+              <p className="text-red-400 text-sm mt-1">Ваш стек: $0</p>
+              {kickCountdown !== null && (
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center">
+                    <span className="text-red-400 font-bold">{kickCountdown}</span>
+                  </div>
+                  <span className="text-red-400 text-sm">секунд до удаления</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400">Мин: ${minBuyIn.toFixed(2)}</span>
+                <span className="text-zinc-400">Макс: ${maxBuyIn.toFixed(2)}</span>
+              </div>
+              <Slider
+                value={[rebuyAmount]}
+                onValueChange={([v]) => setRebuyAmount(v)}
+                min={minBuyIn}
+                max={Math.min(maxBuyIn, balance)}
+                step={0.01}
+              />
+              <Input
+                type="number"
+                value={rebuyAmount.toFixed(2)}
+                onChange={(e) => setRebuyAmount(parseFloat(e.target.value) || minBuyIn)}
+                className="bg-zinc-800 border-zinc-700 text-center text-xl h-12"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowRebuy(false);
+                  setKickCountdown(null);
+                }}
+                className="flex-1 h-11"
+              >
+                Уйти
+              </Button>
+              <Button
+                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleRebuy}
+                disabled={rebuyAmount > balance}
+                data-testid="button-rebuy"
+              >
+                Докупить ${rebuyAmount.toFixed(2)}
               </Button>
             </div>
           </div>

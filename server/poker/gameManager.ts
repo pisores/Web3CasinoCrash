@@ -42,19 +42,24 @@ interface ActiveHand {
 }
 
 const TURN_TIME_SECONDS = 30;
+const ZERO_STACK_KICK_SECONDS = 10;
 
 class PokerTableManager {
   private tables: Map<string, ActiveHand> = new Map();
   private tableHandNumbers: Map<string, number> = new Map();
+  private zeroStackTimers: Map<string, NodeJS.Timeout> = new Map(); // key: tableId-seatNumber
   private onStateChange: (tableId: string, state: PokerGameState) => void;
   private onBalanceChange: (odejs: string, amount: number) => void;
+  private onPlayerKicked: (tableId: string, odejs: string, seatNumber: number) => void;
 
   constructor(
     onStateChange: (tableId: string, state: PokerGameState) => void,
-    onBalanceChange: (odejs: string, amount: number) => void
+    onBalanceChange: (odejs: string, amount: number) => void,
+    onPlayerKicked?: (tableId: string, odejs: string, seatNumber: number) => void
   ) {
     this.onStateChange = onStateChange;
     this.onBalanceChange = onBalanceChange;
+    this.onPlayerKicked = onPlayerKicked || (() => {});
   }
 
   getOrCreateTable(tableId: string, smallBlind: number, bigBlind: number, rakePercent: number, rakeCap: number): ActiveHand {
@@ -116,6 +121,9 @@ class PokerTableManager {
     const player = hand.players.get(seatNumber);
     if (!player) return false;
 
+    // Clear any zero stack timer for this player
+    this.clearZeroStackTimer(tableId, seatNumber);
+
     // Return chips to player balance
     if (player.chipStack > 0) {
       this.onBalanceChange(player.odejs, player.chipStack);
@@ -124,6 +132,71 @@ class PokerTableManager {
     hand.players.delete(seatNumber);
     this.broadcastState(tableId);
     return true;
+  }
+
+  // Rebuy - add chips to player's stack and cancel kick timer
+  // Returns the new chip stack after adding amount
+  rebuy(tableId: string, seatNumber: number, amount: number): number | null {
+    const hand = this.tables.get(tableId);
+    if (!hand) return null;
+
+    const player = hand.players.get(seatNumber);
+    if (!player) return null;
+
+    // Cancel the kick timer since player is rebuying
+    this.clearZeroStackTimer(tableId, seatNumber);
+
+    // Add chips to stack
+    player.chipStack += amount;
+    player.isSittingOut = false;
+
+    this.broadcastState(tableId);
+    console.log(`Player ${player.odejs} rebought ${amount} at table ${tableId}, new stack: ${player.chipStack}`);
+    return player.chipStack;
+  }
+
+  private startZeroStackTimer(tableId: string, seatNumber: number, odejs: string): void {
+    const timerKey = `${tableId}-${seatNumber}`;
+    
+    // Clear any existing timer
+    this.clearZeroStackTimer(tableId, seatNumber);
+
+    console.log(`Starting ${ZERO_STACK_KICK_SECONDS}s kick timer for player ${odejs} at seat ${seatNumber}`);
+
+    const timer = setTimeout(() => {
+      console.log(`Kicking player ${odejs} from seat ${seatNumber} - no rebuy in ${ZERO_STACK_KICK_SECONDS}s`);
+      
+      // Remove player from table (chips already 0, nothing to return)
+      const hand = this.tables.get(tableId);
+      if (hand) {
+        hand.players.delete(seatNumber);
+        this.broadcastState(tableId);
+      }
+      
+      this.zeroStackTimers.delete(timerKey);
+      this.onPlayerKicked(tableId, odejs, seatNumber);
+    }, ZERO_STACK_KICK_SECONDS * 1000);
+
+    this.zeroStackTimers.set(timerKey, timer);
+  }
+
+  private clearZeroStackTimer(tableId: string, seatNumber: number): void {
+    const timerKey = `${tableId}-${seatNumber}`;
+    const timer = this.zeroStackTimers.get(timerKey);
+    if (timer) {
+      clearTimeout(timer);
+      this.zeroStackTimers.delete(timerKey);
+      console.log(`Cleared kick timer for seat ${seatNumber} at table ${tableId}`);
+    }
+  }
+
+  private checkZeroStackPlayers(hand: ActiveHand): void {
+    for (const [seatNumber, player] of Array.from(hand.players.entries())) {
+      if (player.chipStack <= 0) {
+        // Start kick timer for this player with zero chips
+        this.startZeroStackTimer(hand.tableId, seatNumber, player.odejs);
+      }
+    }
   }
 
   canStartHand(tableId: string): boolean {
@@ -445,6 +518,9 @@ class PokerTableManager {
     hand.status = "waiting";
     hand.currentTurn = null;
 
+    // Check for players with zero chips - start kick timers
+    this.checkZeroStackPlayers(hand);
+
     this.broadcastState(tableId);
 
     // Auto-start next hand after delay if enough players
@@ -535,10 +611,11 @@ let pokerManager: PokerTableManager | null = null;
 
 export function getPokerManager(
   onStateChange?: (tableId: string, state: PokerGameState) => void,
-  onBalanceChange?: (odejs: string, amount: number) => void
+  onBalanceChange?: (odejs: string, amount: number) => void,
+  onPlayerKicked?: (tableId: string, odejs: string, seatNumber: number) => void
 ): PokerTableManager {
   if (!pokerManager && onStateChange && onBalanceChange) {
-    pokerManager = new PokerTableManager(onStateChange, onBalanceChange);
+    pokerManager = new PokerTableManager(onStateChange, onBalanceChange, onPlayerKicked);
   }
   if (!pokerManager) {
     throw new Error("PokerManager not initialized");
