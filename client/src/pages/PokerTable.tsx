@@ -214,7 +214,7 @@ export function PokerTable({
   onBack,
   onBalanceChange,
 }: PokerTableProps) {
-  const { user, hapticFeedback } = useTelegram();
+  const { user, hapticFeedback, isLoading: userLoading } = useTelegram();
   const { toast } = useToast();
 
   const [gameState, setGameState] = useState<PokerGameState | null>(null);
@@ -253,12 +253,19 @@ export function PokerTable({
   }, [gameState, myPlayer, isMyTurn, user?.id, mySeat]);
 
   useEffect(() => {
+    // Wait for user to load before connecting
+    if (!user?.id || userLoading) {
+      console.log("Waiting for user to load...", { userId: user?.id, userLoading });
+      return;
+    }
+
+    console.log("Connecting WebSocket with user.id:", user.id);
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join_table", tableId, odejs: user?.id }));
+      ws.send(JSON.stringify({ type: "join_table", tableId, odejs: user.id }));
     };
 
     ws.onmessage = (event) => {
@@ -314,7 +321,7 @@ export function PokerTable({
     return () => {
       ws.close();
     };
-  }, [tableId, user?.id]);
+  }, [tableId, user?.id, userLoading]);
 
   // Countdown timer for kick
   useEffect(() => {
