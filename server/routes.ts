@@ -1393,7 +1393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sit at poker table
   app.post("/api/poker/tables/:id/sit", async (req, res) => {
     try {
-      const { odejs, buyIn } = req.body;
+      const { odejs, buyIn, seatNumber } = req.body;
       const tableId = req.params.id;
 
       const table = await storage.getPokerTable(tableId);
@@ -1412,29 +1412,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
 
-      // Find available seat
+      // Check if seat is available
       const seats = await storage.getTableSeats(tableId);
       const takenSeats = new Set(seats.map(s => s.seatNumber));
-      let availableSeat = -1;
-      for (let i = 0; i < table.maxSeats; i++) {
-        if (!takenSeats.has(i)) {
-          availableSeat = i;
-          break;
+      
+      // Use requested seat or find available
+      let targetSeat = seatNumber;
+      if (targetSeat === undefined || targetSeat === null) {
+        for (let i = 0; i < table.maxSeats; i++) {
+          if (!takenSeats.has(i)) {
+            targetSeat = i;
+            break;
+          }
         }
       }
 
-      if (availableSeat === -1) {
+      if (targetSeat === undefined || targetSeat === null || targetSeat < 0) {
         return res.status(400).json({ error: "Table is full" });
+      }
+
+      if (takenSeats.has(targetSeat)) {
+        return res.status(400).json({ error: "Seat is taken" });
       }
 
       // Deduct buy-in from balance
       await storage.updateBalance(odejs, -buyIn, "poker_buyin", `Poker buy-in at ${table.name}`);
 
       // Add player to table
-      await storage.addPlayerToTable(tableId, odejs, availableSeat, buyIn);
+      await storage.addPlayerToTable(tableId, odejs, targetSeat, buyIn);
       await storage.updateTablePlayerCount(tableId, seats.length + 1);
 
-      res.json({ seatNumber: availableSeat, chipStack: buyIn });
+      res.json({ seatNumber: targetSeat, chipStack: buyIn });
     } catch (error) {
       res.status(500).json({ error: "Failed to sit at table" });
     }

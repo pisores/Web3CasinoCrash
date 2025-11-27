@@ -190,6 +190,21 @@ class GameWebSocket {
       return;
     }
 
+    try {
+      const table = await storage.getPokerTable(tableId);
+      if (table) {
+        pokerManager.getOrCreateTable(
+          tableId,
+          table.smallBlind,
+          table.bigBlind,
+          table.rakePercent,
+          table.rakeCap
+        );
+      }
+    } catch (e) {
+      console.error("Error ensuring table exists:", e);
+    }
+
     await storage.updateUserBalance(userId, user.balance - buyIn);
 
     const success = pokerManager.addPlayer(tableId, {
@@ -202,6 +217,7 @@ class GameWebSocket {
     });
 
     if (success) {
+      console.log(`Player ${username} sat at table ${tableId} seat ${seatNumber} with ${buyIn} chips`);
       if (pokerManager.canStartHand(tableId)) {
         setTimeout(() => {
           pokerManager.startNewHand(tableId);

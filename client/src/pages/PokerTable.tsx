@@ -72,9 +72,10 @@ interface PlayerSeatProps {
   maxSeats: number;
   isSitOut?: boolean;
   playersCount: number;
+  onSeatClick?: (seatNumber: number) => void;
 }
 
-function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, playersCount }: PlayerSeatProps) {
+function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, playersCount, onSeatClick }: PlayerSeatProps) {
   const positions6 = [
     { bottom: "2%", left: "50%", transform: "translate(-50%, 0)" },
     { top: "65%", left: "0%", transform: "translate(-20%, -50%)" },
@@ -105,7 +106,11 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
         className="absolute w-16 flex flex-col items-center"
         style={positionStyle as any}
       >
-        <div className="w-12 h-12 rounded-full bg-zinc-800/60 border-2 border-dashed border-zinc-600/50 flex items-center justify-center cursor-pointer hover:bg-zinc-700/60 transition-colors">
+        <div 
+          className="w-12 h-12 rounded-full bg-zinc-800/60 border-2 border-dashed border-zinc-600/50 flex items-center justify-center cursor-pointer hover:bg-zinc-700/60 hover:border-emerald-500/50 transition-colors"
+          onClick={() => onSeatClick?.(position)}
+          data-testid={`button-seat-${position}`}
+        >
           <Plus className="w-5 h-5 text-zinc-500" />
         </div>
       </div>
@@ -203,6 +208,7 @@ export function PokerTable({
   const [gameState, setGameState] = useState<PokerGameState | null>(null);
   const [chipStack, setChipStack] = useState(0);
   const [mySeat, setMySeat] = useState<number | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [buyInAmount, setBuyInAmount] = useState(minBuyIn);
   const [betAmount, setBetAmount] = useState(bigBlind);
   const [showBuyIn, setShowBuyIn] = useState(false);
@@ -265,7 +271,19 @@ export function PokerTable({
     hapticFeedback("medium");
   }, [tableId, mySeat, isMyTurn, hapticFeedback]);
 
+  const handleSeatClick = (seatNumber: number) => {
+    if (mySeat !== null) return;
+    setSelectedSeat(seatNumber);
+    setBuyInAmount(minBuyIn);
+    setShowBuyIn(true);
+    hapticFeedback("light");
+  };
+
   const handleBuyIn = async () => {
+    if (selectedSeat === null) {
+      toast({ title: "Выберите место", variant: "destructive" });
+      return;
+    }
     if (buyInAmount > balance) {
       toast({ title: "Недостаточно средств", variant: "destructive" });
       return;
@@ -278,6 +296,7 @@ export function PokerTable({
         body: JSON.stringify({
           odejs: user?.id,
           buyIn: buyInAmount,
+          seatNumber: selectedSeat,
         }),
       });
 
@@ -288,6 +307,7 @@ export function PokerTable({
       setChipStack(buyInAmount);
       onBalanceChange(balance - buyInAmount);
       setShowBuyIn(false);
+      setSelectedSeat(null);
       hapticFeedback("medium");
 
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -309,6 +329,11 @@ export function PokerTable({
   const handleLeave = async () => {
     if (mySeat === null) {
       onBack();
+      return;
+    }
+
+    if (gameState && gameState.status !== "waiting") {
+      toast({ title: "Дождитесь окончания раздачи", variant: "destructive" });
       return;
     }
 
@@ -359,7 +384,7 @@ export function PokerTable({
             <span className="text-zinc-400 text-xs">{tableName}</span>
           </div>
 
-          <BalanceDisplay balance={balance} currency="USDT" />
+          <div className="w-8" />
         </div>
       </header>
 
@@ -435,6 +460,7 @@ export function PokerTable({
                   maxSeats={maxSeats}
                   isSitOut={mySeat !== null && playersCount === 1}
                   playersCount={playersCount}
+                  onSeatClick={mySeat === null ? handleSeatClick : undefined}
                 />
               );
             })}
@@ -512,15 +538,9 @@ export function PokerTable({
           </div>
         )}
 
-        {mySeat === null && !showBuyIn && (
-          <div className="px-3 py-2">
-            <Button
-              className="w-full h-10 text-sm bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => setShowBuyIn(true)}
-              data-testid="button-sit"
-            >
-              Сесть за стол (${minBuyIn.toFixed(2)} - ${maxBuyIn.toFixed(2)})
-            </Button>
+        {mySeat === null && (
+          <div className="px-3 py-2 text-center">
+            <span className="text-zinc-500 text-sm">Нажмите на свободное место чтобы сесть</span>
           </div>
         )}
 
@@ -531,10 +551,11 @@ export function PokerTable({
         )}
       </div>
 
-      {showBuyIn && (
+      {showBuyIn && selectedSeat !== null && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-sm space-y-4 border border-zinc-700">
-            <h2 className="text-xl font-bold text-white text-center">Бай-ин</h2>
+            <h2 className="text-xl font-bold text-white text-center">Место #{selectedSeat + 1}</h2>
+            <p className="text-zinc-400 text-center text-sm">Выберите сумму бай-ина</p>
             
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -559,7 +580,7 @@ export function PokerTable({
             <div className="flex gap-3">
               <Button
                 variant="secondary"
-                onClick={() => setShowBuyIn(false)}
+                onClick={() => { setShowBuyIn(false); setSelectedSeat(null); }}
                 className="flex-1 h-11"
               >
                 Отмена
