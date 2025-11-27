@@ -232,11 +232,25 @@ export function PokerTable({
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const myPlayer = gameState?.players.find(p => p.odejs === user?.id);
+  const myPlayer = gameState?.players.find(p => String(p.odejs) === String(user?.id));
   const isMyTurn = myPlayer?.isCurrentTurn;
   const canCheck = gameState?.currentBet === (myPlayer?.betAmount || 0);
   const callAmount = (gameState?.currentBet || 0) - (myPlayer?.betAmount || 0);
   const playersCount = gameState?.players.length || 0;
+
+  // Debug: log turn state
+  useEffect(() => {
+    if (gameState) {
+      console.log("Turn debug:", {
+        myId: user?.id,
+        myPlayer: myPlayer?.odejs,
+        isMyTurn,
+        currentTurn: gameState.currentTurn,
+        status: gameState.status,
+        mySeat,
+      });
+    }
+  }, [gameState, myPlayer, isMyTurn, user?.id, mySeat]);
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -255,7 +269,7 @@ export function PokerTable({
         console.log("Poker state received, players:", data.state.players);
         setGameState(data.state);
         
-        const me = data.state.players.find((p: PokerPlayerState) => p.odejs === user?.id);
+        const me = data.state.players.find((p: PokerPlayerState) => String(p.odejs) === String(user?.id));
         if (me) {
           console.log("Found my player:", me);
           setMySeat(me.seatNumber);
