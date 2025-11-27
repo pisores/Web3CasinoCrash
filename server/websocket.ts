@@ -29,12 +29,16 @@ interface OnlineStats {
   recentBets: LiveBet[];
 }
 
+const DISCONNECT_TIMEOUT_SECONDS = 20;
+
 class GameWebSocket {
   private wss: WebSocketServer | null = null;
   private clients: Map<string, ConnectedUser> = new Map();
   private recentBets: LiveBet[] = [];
   private maxRecentBets = 50;
   private tableSubscriptions: Map<string, Set<string>> = new Map();
+  private disconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // key: odejs
+  private playerTableMap: Map<string, string> = new Map(); // odejs -> tableId
 
   setup(server: Server) {
     this.wss = new WebSocketServer({ server, path: "/ws" });
@@ -79,7 +83,9 @@ class GameWebSocket {
 
       ws.on("close", () => {
         const client = this.clients.get(clientId);
-        if (client?.tableId) {
+        if (client?.tableId && client?.odejs) {
+          // Start disconnect timer instead of immediate removal
+          this.startDisconnectTimer(client.odejs, client.tableId, pokerManager);
           this.unsubscribeFromTable(clientId, client.tableId);
         }
         this.clients.delete(clientId);
@@ -140,8 +146,53 @@ class GameWebSocket {
     }
   }
 
+  private startDisconnectTimer(odejs: string, tableId: string, pokerManager: ReturnType<typeof getPokerManager>) {
+    // Clear any existing timer
+    this.cancelDisconnectTimer(odejs);
+    
+    console.log(`Starting ${DISCONNECT_TIMEOUT_SECONDS}s disconnect timer for player ${odejs} at table ${tableId}`);
+    this.playerTableMap.set(odejs, tableId);
+    
+    const timer = setTimeout(async () => {
+      console.log(`Disconnect timer expired for player ${odejs} - removing from table ${tableId}`);
+      
+      // Get seat number from manager
+      const state = pokerManager.getState(tableId);
+      const playerState = state?.players.find(p => p.odejs === odejs);
+      if (playerState) {
+        // Remove from manager (this handles fold, pot award, etc.)
+        pokerManager.removePlayer(tableId, playerState.seatNumber);
+        
+        // Clean up database
+        await storage.removePlayerFromTable(tableId, odejs);
+        const seats = await storage.getTableSeats(tableId);
+        await storage.updateTablePlayerCount(tableId, seats.length);
+        
+        console.log(`Player ${odejs} removed after disconnect timeout`);
+      }
+      
+      this.disconnectTimers.delete(odejs);
+      this.playerTableMap.delete(odejs);
+    }, DISCONNECT_TIMEOUT_SECONDS * 1000);
+    
+    this.disconnectTimers.set(odejs, timer);
+  }
+
+  private cancelDisconnectTimer(odejs: string) {
+    const timer = this.disconnectTimers.get(odejs);
+    if (timer) {
+      clearTimeout(timer);
+      this.disconnectTimers.delete(odejs);
+      this.playerTableMap.delete(odejs);
+      console.log(`Cancelled disconnect timer for player ${odejs}`);
+    }
+  }
+
   private async handleJoinTable(clientId: string, ws: WebSocket, message: any, pokerManager: ReturnType<typeof getPokerManager>) {
     const { tableId, odejs } = message;
+    
+    // Cancel any pending disconnect timer for this player (they're back!)
+    this.cancelDisconnectTimer(odejs);
     
     const client = this.clients.get(clientId);
     if (client) {
