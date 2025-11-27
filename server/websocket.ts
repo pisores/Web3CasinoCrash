@@ -185,6 +185,14 @@ class GameWebSocket {
             console.log(`Synced player ${dbSeat.odejs} from DB to manager at seat ${dbSeat.seatNumber}`);
           }
         }
+        
+        // After sync, check if we can start a new hand (2+ players ready)
+        if (pokerManager.canStartHand(tableId)) {
+          console.log(`Starting new hand at table ${tableId} after player sync`);
+          setTimeout(() => {
+            pokerManager.startNewHand(tableId);
+          }, 1500);
+        }
       }
     } catch (e) {
       console.error("Error getting poker table:", e);
