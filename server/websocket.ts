@@ -164,6 +164,27 @@ class GameWebSocket {
           table.rakePercent,
           table.rakeCap
         );
+        
+        // Sync players from database to manager (handles server restarts / reconnects)
+        const dbSeats = await storage.getTableSeats(tableId);
+        const managerState = pokerManager.getState(tableId);
+        const managerPlayerIds = new Set(managerState?.players.map(p => p.odejs) || []);
+        
+        for (const dbSeat of dbSeats) {
+          if (!managerPlayerIds.has(dbSeat.odejs)) {
+            // Player exists in DB but not in manager - add them
+            const user = await storage.getUser(dbSeat.odejs);
+            pokerManager.addPlayer(tableId, {
+              odejs: dbSeat.odejs,
+              username: user?.username || user?.firstName || `Player ${dbSeat.seatNumber + 1}`,
+              photoUrl: undefined,
+              seatNumber: dbSeat.seatNumber,
+              chipStack: dbSeat.chipStack,
+              isSittingOut: false,
+            });
+            console.log(`Synced player ${dbSeat.odejs} from DB to manager at seat ${dbSeat.seatNumber}`);
+          }
+        }
       }
     } catch (e) {
       console.error("Error getting poker table:", e);

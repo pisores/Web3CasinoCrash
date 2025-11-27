@@ -1464,6 +1464,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedSeats = await storage.getTableSeats(tableId);
       await storage.updateTablePlayerCount(tableId, updatedSeats.length);
 
+      // Add player to PokerGameManager for WebSocket state broadcast
+      const { getPokerManager } = await import("./poker/gameManager");
+      try {
+        const manager = getPokerManager();
+        manager.getOrCreateTable(tableId, table.smallBlind, table.bigBlind, table.rakePercent, table.rakeCap);
+        manager.addPlayer(tableId, {
+          odejs,
+          username: user.username || user.firstName || `Player ${targetSeat + 1}`,
+          photoUrl: undefined,
+          seatNumber: targetSeat,
+          chipStack: buyIn,
+          isSittingOut: false,
+        });
+        console.log(`Added player ${odejs} to manager at seat ${targetSeat}`);
+      } catch (e) {
+        console.error("Failed to add player to manager:", e);
+      }
+
       res.json({ seatNumber: targetSeat, chipStack: buyIn });
     } catch (error) {
       console.error("Sit error:", error);
@@ -1483,18 +1501,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Not at table" });
       }
 
-      // Return chips to balance
-      if (seat.chipStack > 0) {
-        await storage.updateBalance(odejs, seat.chipStack, "poker_cashout", `Poker cashout`);
+      // Remove from PokerGameManager (this also handles chip return via onBalanceChange callback)
+      const { getPokerManager } = await import("./poker/gameManager");
+      let chipStackReturned = 0;
+      let managerHandledReturn = false;
+      
+      try {
+        const manager = getPokerManager();
+        // Get current stack from manager (may differ from DB if mid-hand)
+        const state = manager.getState(tableId, odejs);
+        const playerState = state?.players.find(p => p.odejs === odejs);
+        if (playerState) {
+          chipStackReturned = playerState.chipStack;
+          // Manager will handle balance return via onBalanceChange callback
+          manager.removePlayer(tableId, seat.seatNumber);
+          managerHandledReturn = true;
+          console.log(`Removed player ${odejs} from manager at seat ${seat.seatNumber}, returned ${chipStackReturned}`);
+        }
+      } catch (e) {
+        console.error("Failed to remove player from manager:", e);
       }
 
-      // Remove from table
+      // Only return chips manually if manager didn't handle it
+      if (!managerHandledReturn && seat.chipStack > 0) {
+        await storage.updateBalance(odejs, seat.chipStack, "poker_cashout", `Poker cashout`);
+        chipStackReturned = seat.chipStack;
+      }
+
+      // Remove from DB table
       await storage.removePlayerFromTable(tableId, odejs);
       
       const seats = await storage.getTableSeats(tableId);
       await storage.updateTablePlayerCount(tableId, seats.length);
 
-      res.json({ success: true, returned: seat.chipStack });
+      res.json({ success: true, returned: chipStackReturned });
     } catch (error) {
       res.status(500).json({ error: "Failed to leave table" });
     }
