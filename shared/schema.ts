@@ -397,6 +397,9 @@ export interface PokerGameState {
   minRaise: number;
   players: PokerPlayerState[];
   timeBank: number;
+  actionDeadline: number; // Unix timestamp when action expires (0 = no timer)
+  bigBlind: number;
+  smallBlind: number;
 }
 
 export interface PokerPlayerState {
@@ -414,4 +417,6 @@ export interface PokerPlayerState {
   isCurrentTurn: boolean;
   holeCards?: Card[]; // Only visible to the player themselves
   isSittingOut: boolean;
+  isReady: boolean; // false = away
+  handStrength?: string; // e.g. "Pair", "Two Pair", "Flush"
 }

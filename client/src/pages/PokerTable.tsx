@@ -152,6 +152,18 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
           </div>
         )}
 
+        {player.isSmallBlind && !player.isDealer && (
+          <div className="absolute -bottom-1 -left-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-md border border-blue-600">
+            SB
+          </div>
+        )}
+
+        {player.isBigBlind && (
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-md border border-orange-600">
+            BB
+          </div>
+        )}
+
         {player.isAllIn && (
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-600 rounded text-[9px] font-bold text-white shadow-md">
             ALL IN
@@ -215,8 +227,10 @@ export function PokerTable({
   const [showRebuy, setShowRebuy] = useState(false);
   const [rebuyAmount, setRebuyAmount] = useState(minBuyIn);
   const [kickCountdown, setKickCountdown] = useState<number | null>(null);
+  const [actionTimeLeft, setActionTimeLeft] = useState<number>(0);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const myPlayer = gameState?.players.find(p => p.odejs === user?.id);
   const isMyTurn = myPlayer?.isCurrentTurn;
@@ -299,6 +313,35 @@ export function PokerTable({
     
     return () => clearInterval(timer);
   }, [kickCountdown]);
+
+  // Action timer - updates every 100ms for smooth progress bar
+  useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!gameState?.actionDeadline || gameState.actionDeadline === 0) {
+      setActionTimeLeft(0);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, gameState.actionDeadline - now);
+      setActionTimeLeft(remaining);
+    };
+
+    updateTimer();
+    timerRef.current = setInterval(updateTimer, 100);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [gameState?.actionDeadline]);
 
   // Handle rebuy
   const handleRebuy = async () => {
@@ -565,6 +608,71 @@ export function PokerTable({
       <div className="shrink-0 bg-black/90 backdrop-blur-sm border-t border-zinc-800/50">
         {mySeat !== null && isMyTurn && (
           <div className="px-3 py-2 space-y-2">
+            {/* Action Timer Progress Bar */}
+            {actionTimeLeft > 0 && (
+              <div className="relative h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-yellow-500 to-red-500 transition-all duration-100"
+                  style={{ width: `${Math.min(100, (actionTimeLeft / ((gameState?.timeBank || 30) * 1000)) * 100)}%` }}
+                />
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-white">
+                  {Math.ceil(actionTimeLeft / 1000)}s
+                </div>
+              </div>
+            )}
+
+            {/* Hand Strength Label */}
+            {myPlayer?.handStrength && (
+              <div className="text-center">
+                <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded-full text-sm text-emerald-400 font-medium">
+                  {myPlayer.handStrength}
+                </span>
+              </div>
+            )}
+
+            {/* Pot sizing buttons - No-Limit rules: raise = call + desired pot percentage */}
+            <div className="flex gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // 1/2 pot sizing: call amount + 50% of (pot + call)
+                  const call = callAmount;
+                  const potPlusCall = (gameState?.pot || 0) + call;
+                  const halfPotRaise = Math.max(gameState?.minRaise || bigBlind, call + potPlusCall * 0.5);
+                  setBetAmount(Math.min(chipStack, halfPotRaise));
+                }}
+                className="h-7 text-xs px-3 border-zinc-600"
+                data-testid="button-half-pot"
+              >
+                1/2 Pot
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Full pot sizing: call amount + 100% of (pot + call)
+                  const call = callAmount;
+                  const potPlusCall = (gameState?.pot || 0) + call;
+                  const potRaise = Math.max(gameState?.minRaise || bigBlind, call + potPlusCall);
+                  setBetAmount(Math.min(chipStack, potRaise));
+                }}
+                className="h-7 text-xs px-3 border-zinc-600"
+                data-testid="button-pot"
+              >
+                Pot
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBetAmount(chipStack)}
+                className="h-7 text-xs px-3 border-zinc-600"
+                data-testid="button-max"
+              >
+                Max
+              </Button>
+            </div>
+
             <div className="flex items-center gap-2">
               <Slider
                 value={[betAmount]}
@@ -638,17 +746,27 @@ export function PokerTable({
         )}
 
         {mySeat !== null && !isMyTurn && (
-          <div className="px-3 py-2 flex items-center justify-between">
-            <span className="text-zinc-400 text-sm">Ваш стек: ${chipStack.toFixed(2)}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleStandUp}
-              className="text-red-400 border-red-400/50 hover:bg-red-500/10"
-              data-testid="button-stand-up"
-            >
-              Встать
-            </Button>
+          <div className="px-3 py-2 space-y-2">
+            {/* Hand Strength Label when waiting */}
+            {myPlayer?.handStrength && (
+              <div className="text-center">
+                <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded-full text-sm text-emerald-400 font-medium">
+                  {myPlayer.handStrength}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400 text-sm">Ваш стек: ${chipStack.toFixed(2)}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStandUp}
+                className="text-red-400 border-red-400/50 hover:bg-red-500/10"
+                data-testid="button-stand-up"
+              >
+                Встать
+              </Button>
+            </div>
           </div>
         )}
       </div>

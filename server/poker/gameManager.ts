@@ -14,6 +14,7 @@ interface TablePlayer {
   isAllIn: boolean;
   hasActed: boolean;
   isSittingOut: boolean;
+  isReady: boolean; // false = away
 }
 
 interface ActiveHand {
@@ -39,6 +40,7 @@ interface ActiveHand {
   rakeCap: number;
   rake: number;
   actionTimeout: NodeJS.Timeout | null;
+  actionDeadline: number; // Unix timestamp when current player's turn expires
 }
 
 const TURN_TIME_SECONDS = 30;
@@ -88,13 +90,14 @@ class PokerTableManager {
         rakeCap,
         rake: 0,
         actionTimeout: null,
+        actionDeadline: 0,
       };
       this.tables.set(tableId, hand);
     }
     return hand;
   }
 
-  addPlayer(tableId: string, player: Omit<TablePlayer, "holeCards" | "betAmount" | "totalBetInHand" | "isFolded" | "isAllIn" | "hasActed">): boolean {
+  addPlayer(tableId: string, player: Omit<TablePlayer, "holeCards" | "betAmount" | "totalBetInHand" | "isFolded" | "isAllIn" | "hasActed" | "isReady">): boolean {
     const hand = this.tables.get(tableId);
     if (!hand) return false;
 
@@ -108,6 +111,7 @@ class PokerTableManager {
       isFolded: false,
       isAllIn: false,
       hasActed: false,
+      isReady: true, // Player is ready by default when joining
     });
 
     this.broadcastState(tableId);
@@ -535,6 +539,9 @@ class PokerTableManager {
     const hand = this.tables.get(tableId);
     if (!hand || !hand.currentTurn) return;
 
+    // Set action deadline
+    hand.actionDeadline = Date.now() + TURN_TIME_SECONDS * 1000;
+
     hand.actionTimeout = setTimeout(() => {
       // Auto-fold on timeout
       const player = hand.players.get(hand.currentTurn!);
@@ -553,6 +560,7 @@ class PokerTableManager {
       clearTimeout(hand.actionTimeout);
       hand.actionTimeout = null;
     }
+    hand.actionDeadline = 0;
   }
 
   getState(tableId: string, requestingUserId?: string): PokerGameState | null {
@@ -563,6 +571,17 @@ class PokerTableManager {
     const seats = Array.from(hand.players.entries()).sort((a, b) => a[0] - b[0]);
 
     for (const [seat, player] of seats) {
+      // Calculate hand strength for the player if they have cards and there are community cards
+      let handStrength: string | undefined;
+      if (player.holeCards.length === 2 && hand.communityCards.length >= 3 && !player.isFolded) {
+        try {
+          const result = evaluateHand(player.holeCards, hand.communityCards);
+          handStrength = result.description;
+        } catch (e) {
+          // Ignore evaluation errors
+        }
+      }
+
       players.push({
         odejs: player.odejs,
         odejsname: player.username,
@@ -579,6 +598,8 @@ class PokerTableManager {
         holeCards: player.odejs === requestingUserId ? player.holeCards : 
           (hand.status === "showdown" && !player.isFolded ? player.holeCards : undefined),
         isSittingOut: player.isSittingOut,
+        isReady: player.isReady,
+        handStrength: player.odejs === requestingUserId ? handStrength : undefined, // Only show own hand strength
       });
     }
 
@@ -595,6 +616,9 @@ class PokerTableManager {
       minRaise: hand.minRaise,
       players,
       timeBank: TURN_TIME_SECONDS,
+      actionDeadline: hand.actionDeadline,
+      bigBlind: hand.bigBlind,
+      smallBlind: hand.smallBlind,
     };
   }
 
