@@ -181,6 +181,9 @@ The app runs on port 5000 via `npm run dev`
 - **FIX**: Fixed user.id undefined bug preventing seat at poker table
 - **FIX**: Added checks to prevent double-seating at multiple seats
 - **FIX**: Improved seat synchronization between frontend and backend
+- **FIX**: Race condition protection with database unique indexes (idx_active_seat, idx_active_player)
+- **NEW**: Auto-created partial unique indexes on server startup via initializePokerIndexes()
+- **NEW**: Atomic acquireSeat operation with PostgreSQL constraint violation handling
 
 ## Audio System
 - `AudioProvider` context wraps the app for global audio state
