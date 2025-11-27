@@ -246,6 +246,10 @@ export const pokerSeats = pgTable("poker_seats", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Note: Need to add unique index via SQL migration:
+// CREATE UNIQUE INDEX idx_active_seat ON poker_seats (table_id, seat_number) WHERE is_active = true;
+// CREATE UNIQUE INDEX idx_active_player ON poker_seats (table_id, user_id) WHERE is_active = true;
+
 export type PokerSeat = typeof pokerSeats.$inferSelect;
 
 // Poker hand history

@@ -345,7 +345,15 @@ export function PokerTable({
 
   // Handle rebuy
   const handleRebuy = async () => {
-    if (mySeat === null) return;
+    if (mySeat === null) {
+      toast({ title: "Вы не за столом", variant: "destructive" });
+      return;
+    }
+    
+    if (!user?.id) {
+      toast({ title: "Ошибка: пользователь не загружен", variant: "destructive" });
+      return;
+    }
     
     if (rebuyAmount > balance) {
       toast({ title: "Недостаточно средств", variant: "destructive" });
@@ -357,7 +365,7 @@ export function PokerTable({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          odejs: user?.id,
+          odejs: user.id,
           amount: rebuyAmount,
         }),
       });
@@ -395,7 +403,22 @@ export function PokerTable({
   }, [tableId, mySeat, isMyTurn, hapticFeedback]);
 
   const handleSeatClick = (seatNumber: number) => {
-    if (mySeat !== null) return;
+    // Don't allow sitting if already seated
+    if (mySeat !== null) {
+      toast({ title: "Вы уже сидите за столом", variant: "destructive" });
+      return;
+    }
+    // Check if user is loaded
+    if (!user?.id) {
+      toast({ title: "Подождите загрузки...", variant: "destructive" });
+      return;
+    }
+    // Check if seat is taken
+    const seatTaken = gameState?.players.some(p => p.seatNumber === seatNumber);
+    if (seatTaken) {
+      toast({ title: "Место занято", variant: "destructive" });
+      return;
+    }
     setSelectedSeat(seatNumber);
     setBuyInAmount(minBuyIn);
     setShowBuyIn(true);
@@ -407,49 +430,73 @@ export function PokerTable({
       toast({ title: "Выберите место", variant: "destructive" });
       return;
     }
+    if (!user?.id) {
+      toast({ title: "Ошибка: пользователь не загружен", variant: "destructive" });
+      return;
+    }
+    if (mySeat !== null) {
+      toast({ title: "Вы уже сидите за столом", variant: "destructive" });
+      setShowBuyIn(false);
+      setSelectedSeat(null);
+      return;
+    }
     if (buyInAmount > balance) {
       toast({ title: "Недостаточно средств", variant: "destructive" });
       return;
     }
 
-    console.log("Attempting to sit at seat", selectedSeat, "with buy-in", buyInAmount);
+    console.log("Attempting to sit at seat", selectedSeat, "with buy-in", buyInAmount, "user:", user.id);
 
     try {
       const res = await fetch(`/api/poker/tables/${tableId}/sit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          odejs: user?.id,
+          odejs: user.id,
           buyIn: buyInAmount,
           seatNumber: selectedSeat,
         }),
       });
 
+      const data = await res.json();
+      
       if (!res.ok) {
-        const errorData = await res.json();
-        console.error("REST API error:", errorData);
-        throw new Error(errorData.error || "Failed to sit");
+        console.error("REST API error:", data);
+        
+        // If already seated, recover the state
+        if (data.error === "Already seated at this table" && data.seatNumber !== undefined) {
+          console.log("Recovering existing seat:", data.seatNumber);
+          setMySeat(data.seatNumber);
+          setChipStack(data.chipStack || 0);
+          setShowBuyIn(false);
+          setSelectedSeat(null);
+          toast({ title: "Вы уже сидите за этим столом" });
+          return;
+        }
+        
+        throw new Error(data.error || "Failed to sit");
       }
 
-      const data = await res.json();
       console.log("REST API success, seatNumber:", data.seatNumber);
       
+      // Update local state after successful response
       setMySeat(data.seatNumber);
-      setChipStack(buyInAmount);
+      setChipStack(data.chipStack || buyInAmount);
       onBalanceChange(balance - buyInAmount);
       setShowBuyIn(false);
       setSelectedSeat(null);
       hapticFeedback("medium");
 
+      // Notify WebSocket to sync game state
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         const sitMessage = {
           type: "sit_down",
           tableId,
-          odejs: user?.id,
+          odejs: user.id,
           seatNumber: data.seatNumber,
           buyIn: buyInAmount,
-          username: user?.firstName || user?.username || "Player",
-          photoUrl: user?.photoUrl,
+          username: user.firstName || user.username || "Player",
+          photoUrl: user.photoUrl,
         };
         console.log("Sending WebSocket sit_down:", sitMessage);
         wsRef.current.send(JSON.stringify(sitMessage));
@@ -457,6 +504,9 @@ export function PokerTable({
     } catch (error: any) {
       console.error("Buy-in error:", error);
       toast({ title: "Ошибка", description: error.message || "Не удалось сесть за стол", variant: "destructive" });
+      // Reset state on error
+      setShowBuyIn(false);
+      setSelectedSeat(null);
     }
   };
 
@@ -465,7 +515,15 @@ export function PokerTable({
   };
 
   const handleStandUp = async () => {
-    if (mySeat === null) return;
+    if (mySeat === null) {
+      toast({ title: "Вы не за столом", variant: "destructive" });
+      return;
+    }
+
+    if (!user?.id) {
+      toast({ title: "Ошибка: пользователь не загружен", variant: "destructive" });
+      return;
+    }
 
     if (gameState && gameState.status !== "waiting") {
       toast({ title: "Дождитесь окончания раздачи", variant: "destructive" });
@@ -473,29 +531,37 @@ export function PokerTable({
     }
 
     try {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: "leave_table",
-          tableId,
-          seatNumber: mySeat,
-        }));
-      }
-
+      // First notify backend to leave
       const res = await fetch(`/api/poker/tables/${tableId}/leave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ odejs: user?.id, seatNumber: mySeat }),
+        body: JSON.stringify({ odejs: user.id, seatNumber: mySeat }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        
+        // Then notify WebSocket
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: "leave_table",
+            tableId,
+            seatNumber: mySeat,
+            odejs: user.id,
+          }));
+        }
+        
+        // Update local state after success
         onBalanceChange(balance + (data.returned || 0));
         setMySeat(null);
         setChipStack(0);
         toast({ title: "Вы встали из-за стола" });
+      } else {
+        const errorData = await res.json();
+        toast({ title: errorData.error || "Ошибка", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Ошибка", variant: "destructive" });
+      toast({ title: "Ошибка при выходе", variant: "destructive" });
     }
   };
 

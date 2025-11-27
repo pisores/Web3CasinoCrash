@@ -1390,11 +1390,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sit at poker table
+  // Sit at poker table - uses atomic acquireSeat to prevent race conditions
   app.post("/api/poker/tables/:id/sit", async (req, res) => {
     try {
       const { odejs, buyIn, seatNumber } = req.body;
       const tableId = req.params.id;
+
+      // Validate odejs is provided
+      if (!odejs) {
+        return res.status(400).json({ error: "User ID required" });
+      }
 
       const table = await storage.getPokerTable(tableId);
       if (!table) {
@@ -1415,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Insufficient balance" });
       }
 
-      // Check if seat is available
+      // Get current seats to find available seat number if not specified
       const seats = await storage.getTableSeats(tableId);
       const takenSeats = new Set(seats.map(s => s.seatNumber));
       
@@ -1434,19 +1439,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Table is full" });
       }
 
-      if (takenSeats.has(targetSeat)) {
-        return res.status(400).json({ error: "Seat is taken" });
+      // Use atomic acquireSeat to prevent race conditions
+      const result = await storage.acquireSeat(tableId, odejs, targetSeat, buyIn);
+      
+      if (!result.success) {
+        console.log("Acquire seat failed:", result.error);
+        
+        // If already seated, return existing seat info for recovery
+        if (result.existingSeat) {
+          return res.status(400).json({ 
+            error: result.error, 
+            seatNumber: result.existingSeat.seatNumber,
+            chipStack: result.existingSeat.chipStack 
+          });
+        }
+        
+        return res.status(400).json({ error: result.error });
       }
 
-      // Deduct buy-in from balance
+      // Deduct buy-in from balance only after successful seat acquisition
       await storage.updateBalance(odejs, -buyIn, "poker_buyin", `Poker buy-in at ${table.name}`);
-
-      // Add player to table
-      await storage.addPlayerToTable(tableId, odejs, targetSeat, buyIn);
-      await storage.updateTablePlayerCount(tableId, seats.length + 1);
+      
+      // Recount seats from fresh data to prevent count drift
+      const updatedSeats = await storage.getTableSeats(tableId);
+      await storage.updateTablePlayerCount(tableId, updatedSeats.length);
 
       res.json({ seatNumber: targetSeat, chipStack: buyIn });
     } catch (error) {
+      console.error("Sit error:", error);
       res.status(500).json({ error: "Failed to sit at table" });
     }
   });

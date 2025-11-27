@@ -173,6 +173,14 @@ The app runs on port 5000 via `npm run dev`
 - **NEW**: Zero stack auto-kick: 10 seconds to rebuy or get kicked from table
 - **NEW**: Rebuy dialog with countdown timer when stack hits zero
 - **FIX**: Seat remains occupied until player explicitly leaves
+- **NEW**: Action timer system with actionDeadline (Unix timestamp) for turn expiration
+- **NEW**: Hand strength labels showing current hand (e.g., "Pair", "Two Pair", "Full House")
+- **NEW**: Pot sizing buttons (1/2 Pot, Pot, Max) with No-Limit Texas Hold'em rules
+- **NEW**: SB/BB position markers displayed on player avatars
+- **NEW**: isReady field for Ready/Away status support
+- **FIX**: Fixed user.id undefined bug preventing seat at poker table
+- **FIX**: Added checks to prevent double-seating at multiple seats
+- **FIX**: Improved seat synchronization between frontend and backend
 
 ## Audio System
 - `AudioProvider` context wraps the app for global audio state

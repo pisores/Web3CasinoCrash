@@ -50,6 +50,8 @@ export interface IStorage {
   updatePlayerChipStack(tableId: string, odejs: string, chipStack: number): Promise<void>;
   updateSeatChipStack(tableId: string, seatNumber: number, chipStack: number): Promise<void>;
   updateBalance(odejs: string, amount: number, type: string, description?: string): Promise<User | undefined>;
+  // Atomic seat acquisition to prevent race conditions
+  acquireSeat(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<{ success: boolean; seat?: PokerSeat; error?: string; existingSeat?: PokerSeat }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -260,6 +262,83 @@ export class DatabaseStorage implements IStorage {
       chipStack,
     }).returning();
     return seat;
+  }
+
+  // Atomic seat acquisition using INSERT ON CONFLICT for true atomicity
+  async acquireSeat(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<{ success: boolean; seat?: PokerSeat; error?: string; existingSeat?: PokerSeat }> {
+    try {
+      // First check if player already has an active seat at this table
+      const existingPlayerSeat = await db.select().from(pokerSeats).where(
+        and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
+      );
+      
+      if (existingPlayerSeat.length > 0) {
+        return { 
+          success: false, 
+          error: "Already seated at this table", 
+          existingSeat: existingPlayerSeat[0] 
+        };
+      }
+
+      // Check if the target seat is already taken
+      const existingTargetSeat = await db.select().from(pokerSeats).where(
+        and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.seatNumber, seatNumber), eq(pokerSeats.isActive, true))
+      );
+      
+      if (existingTargetSeat.length > 0) {
+        return { success: false, error: "Seat is taken" };
+      }
+
+      // Atomic INSERT - unique indexes will reject duplicates at DB level
+      const [seat] = await db.insert(pokerSeats).values({
+        tableId,
+        odejs,
+        seatNumber,
+        chipStack,
+      }).returning();
+
+      return { success: true, seat };
+    } catch (error: any) {
+      // Handle unique constraint violations from partial indexes
+      if (error.code === '23505') {
+        const errorDetail = error.detail || '';
+        const constraintName = error.constraint || '';
+        
+        // Player already seated (idx_active_player constraint)
+        if (errorDetail.includes('user_id') || constraintName.includes('active_player')) {
+          const playerSeat = await db.select().from(pokerSeats).where(
+            and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
+          );
+          if (playerSeat.length > 0) {
+            return { 
+              success: false, 
+              error: "Already seated at this table", 
+              existingSeat: playerSeat[0] 
+            };
+          }
+        }
+        
+        // Seat number was taken (idx_active_seat constraint) 
+        if (errorDetail.includes('seat_number') || constraintName.includes('active_seat')) {
+          return { success: false, error: "Seat was just taken by another player" };
+        }
+        
+        // Generic conflict - re-check player seat for recovery
+        const playerSeat = await db.select().from(pokerSeats).where(
+          and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
+        );
+        if (playerSeat.length > 0) {
+          return { 
+            success: false, 
+            error: "Already seated at this table", 
+            existingSeat: playerSeat[0] 
+          };
+        }
+        
+        return { success: false, error: "Seat conflict - please try again" };
+      }
+      throw error;
+    }
   }
 
   async removePlayerFromTable(tableId: string, odejs: string): Promise<void> {
@@ -582,6 +661,10 @@ export class MemStorage implements IStorage {
   }
 
   async addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat> {
+    throw new Error("Poker not supported in MemStorage");
+  }
+
+  async acquireSeat(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<{ success: boolean; seat?: PokerSeat; error?: string; existingSeat?: PokerSeat }> {
     throw new Error("Poker not supported in MemStorage");
   }
 
