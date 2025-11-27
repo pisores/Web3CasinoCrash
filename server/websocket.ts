@@ -180,16 +180,6 @@ class GameWebSocket {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    const userId = String(odejs);
-    const user = await storage.getUser(userId);
-    if (!user || user.balance < buyIn) {
-      client.ws.send(JSON.stringify({ 
-        type: "error", 
-        message: "Недостаточно средств" 
-      }));
-      return;
-    }
-
     try {
       const table = await storage.getPokerTable(tableId);
       if (table) {
@@ -205,11 +195,9 @@ class GameWebSocket {
       console.error("Error ensuring table exists:", e);
     }
 
-    await storage.updateUserBalance(userId, user.balance - buyIn);
-
     const success = pokerManager.addPlayer(tableId, {
       odejs,
-      username: username || user.username || "Player",
+      username: username || "Player",
       photoUrl: photoUrl || null,
       seatNumber,
       chipStack: buyIn,
@@ -224,10 +212,9 @@ class GameWebSocket {
         }, 2000);
       }
     } else {
-      await storage.updateUserBalance(userId, user.balance);
       client.ws.send(JSON.stringify({ 
         type: "error", 
-        message: "Не удалось сесть за стол" 
+        message: "Место занято" 
       }));
     }
   }

@@ -232,12 +232,15 @@ export function PokerTable({
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log("WebSocket message:", data.type, data);
       
       if (data.type === "poker_state") {
+        console.log("Poker state received, players:", data.state.players);
         setGameState(data.state);
         
         const me = data.state.players.find((p: PokerPlayerState) => p.odejs === user?.id);
         if (me) {
+          console.log("Found my player:", me);
           setMySeat(me.seatNumber);
           setChipStack(me.chipStack);
         }
@@ -289,6 +292,8 @@ export function PokerTable({
       return;
     }
 
+    console.log("Attempting to sit at seat", selectedSeat, "with buy-in", buyInAmount);
+
     try {
       const res = await fetch(`/api/poker/tables/${tableId}/sit`, {
         method: "POST",
@@ -300,9 +305,15 @@ export function PokerTable({
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to sit");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("REST API error:", errorData);
+        throw new Error(errorData.error || "Failed to sit");
+      }
 
       const data = await res.json();
+      console.log("REST API success, seatNumber:", data.seatNumber);
+      
       setMySeat(data.seatNumber);
       setChipStack(buyInAmount);
       onBalanceChange(balance - buyInAmount);
@@ -311,7 +322,7 @@ export function PokerTable({
       hapticFeedback("medium");
 
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
+        const sitMessage = {
           type: "sit_down",
           tableId,
           odejs: user?.id,
@@ -319,10 +330,13 @@ export function PokerTable({
           buyIn: buyInAmount,
           username: user?.firstName || user?.username || "Player",
           photoUrl: user?.photoUrl,
-        }));
+        };
+        console.log("Sending WebSocket sit_down:", sitMessage);
+        wsRef.current.send(JSON.stringify(sitMessage));
       }
-    } catch (error) {
-      toast({ title: "Ошибка", description: "Не удалось сесть за стол", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Buy-in error:", error);
+      toast({ title: "Ошибка", description: error.message || "Не удалось сесть за стол", variant: "destructive" });
     }
   };
 
