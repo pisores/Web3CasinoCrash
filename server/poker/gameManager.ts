@@ -43,7 +43,7 @@ interface ActiveHand {
   actionDeadline: number; // Unix timestamp when current player's turn expires
 }
 
-const TURN_TIME_SECONDS = 30;
+const TURN_TIME_SECONDS = 10;
 const ZERO_STACK_KICK_SECONDS = 10;
 
 class PokerTableManager {
