@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { useTelegram } from "@/components/TelegramProvider";
+import { useAudio } from "@/components/AudioProvider";
 import { useToast } from "@/hooks/use-toast";
 import type { Card, PokerGameState, PokerPlayerState, PokerAction } from "@shared/schema";
 import pokerBgImage from "@assets/generated_images/dark_water_texture_background.png";
@@ -36,7 +38,7 @@ const SUIT_COLORS: Record<string, string> = {
   spades: "text-zinc-900",
 };
 
-function PlayingCard({ card, hidden = false, size = "md" }: { card?: Card; hidden?: boolean; size?: "sm" | "md" | "lg" }) {
+function PlayingCard({ card, hidden = false, size = "md", delay = 0 }: { card?: Card; hidden?: boolean; size?: "sm" | "md" | "lg"; delay?: number }) {
   const sizeClasses = {
     sm: "w-7 h-10 text-[10px]",
     md: "w-10 h-14 text-xs",
@@ -45,17 +47,27 @@ function PlayingCard({ card, hidden = false, size = "md" }: { card?: Card; hidde
 
   if (hidden || !card) {
     return (
-      <div className={`${sizeClasses[size]} bg-gradient-to-br from-red-700 to-red-900 rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg`}>
+      <motion.div 
+        initial={{ rotateY: 180, scale: 0.5, opacity: 0 }}
+        animate={{ rotateY: 0, scale: 1, opacity: 1 }}
+        transition={{ duration: 0.3, delay }}
+        className={`${sizeClasses[size]} bg-gradient-to-br from-red-700 to-red-900 rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg`}
+      >
         <div className="w-3/4 h-3/4 border border-red-500/50 rounded-sm bg-red-800/50" />
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className={`${sizeClasses[size]} bg-zinc-100 rounded-md border border-zinc-300 flex flex-col items-center justify-center font-bold shadow-lg ${SUIT_COLORS[card.suit]}`}>
+    <motion.div 
+      initial={{ rotateY: 180, scale: 0.5, opacity: 0 }}
+      animate={{ rotateY: 0, scale: 1, opacity: 1 }}
+      transition={{ duration: 0.3, delay }}
+      className={`${sizeClasses[size]} bg-zinc-100 rounded-md border border-zinc-300 flex flex-col items-center justify-center font-bold shadow-lg ${SUIT_COLORS[card.suit]}`}
+    >
       <span className="leading-none">{card.rank}</span>
       <span className="leading-none text-lg">{SUIT_SYMBOLS[card.suit]}</span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -132,11 +144,17 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
       )}
 
       <div className="relative">
-        <div className={`w-14 h-14 rounded-full overflow-hidden border-3 ${
-          player.isFolded ? "border-zinc-600 opacity-40" : 
-          player.isCurrentTurn ? "border-yellow-400 ring-2 ring-yellow-400/50" :
-          isMe ? "border-emerald-500" : "border-blue-500"
-        } shadow-lg`}>
+        <motion.div 
+          className={`w-14 h-14 rounded-full overflow-hidden border-3 ${
+            player.isFolded ? "border-zinc-600 opacity-40" : 
+            player.isCurrentTurn ? "border-yellow-400 ring-2 ring-yellow-400/50" :
+            isMe ? "border-emerald-500" : "border-blue-500"
+          } shadow-lg`}
+          animate={player.isCurrentTurn ? {
+            boxShadow: ["0 0 0 0 rgba(250, 204, 21, 0)", "0 0 0 8px rgba(250, 204, 21, 0.4)", "0 0 0 0 rgba(250, 204, 21, 0)"]
+          } : {}}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
           {player.odejsPhotoUrl ? (
             <img src={player.odejsPhotoUrl} alt={player.odejsname} className="w-full h-full object-cover" />
           ) : (
@@ -144,7 +162,7 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
               {player.odejsname?.[0]?.toUpperCase() || "?"}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {player.isDealer && (
           <div className="absolute -bottom-1 -left-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center text-xs font-bold text-black shadow-md border border-yellow-600">
@@ -186,18 +204,31 @@ function PlayerSeat({ player, position, isMe, maxSeats, isSitOut = false, player
         </div>
       )}
 
-      {player.betAmount > 0 && (
-        <div className="absolute" style={{ 
-          top: position === 0 || position === 4 ? "-30px" : "50%",
-          left: position < 3 ? "70px" : "auto",
-          right: position >= 4 ? "70px" : "auto",
-        }}>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-red-700 border border-red-400 shadow-sm" />
-            <span className="text-xs font-bold text-white">${player.betAmount.toFixed(0)}</span>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {player.betAmount > 0 && (
+          <motion.div 
+            initial={{ scale: 0, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="absolute" 
+            style={{ 
+              top: position === 0 || position === 4 ? "-30px" : "50%",
+              left: position < 3 ? "70px" : "auto",
+              right: position >= 4 ? "70px" : "auto",
+            }}
+          >
+            <motion.div 
+              className="flex items-center gap-1"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-red-700 border border-red-400 shadow-sm" />
+              <span className="text-xs font-bold text-white">${player.betAmount.toFixed(0)}</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -216,6 +247,13 @@ export function PokerTable({
 }: PokerTableProps) {
   const { user, hapticFeedback, isLoading: userLoading } = useTelegram();
   const { toast } = useToast();
+  const { playSound, setCurrentGame } = useAudio();
+
+  // Set audio context to poker
+  useEffect(() => {
+    setCurrentGame("poker");
+    return () => setCurrentGame("lobby");
+  }, [setCurrentGame]);
 
   const [gameState, setGameState] = useState<PokerGameState | null>(null);
   const [chipStack, setChipStack] = useState(0);
@@ -231,12 +269,45 @@ export function PokerTable({
 
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevStatusRef = useRef<string | null>(null);
+  const prevIsMyTurnRef = useRef<boolean>(false);
+  const prevHandNumberRef = useRef<number>(0);
 
   const myPlayer = gameState?.players.find(p => String(p.odejs) === String(user?.id));
   const isMyTurn = myPlayer?.isCurrentTurn;
   const canCheck = gameState?.currentBet === (myPlayer?.betAmount || 0);
   const callAmount = (gameState?.currentBet || 0) - (myPlayer?.betAmount || 0);
   const playersCount = gameState?.players.length || 0;
+
+  // Sound effects based on game state changes
+  useEffect(() => {
+    if (!gameState) return;
+
+    // New hand started - play card deal sound
+    if (gameState.handNumber > prevHandNumberRef.current && gameState.status === "preflop") {
+      playSound("cardDeal");
+      prevHandNumberRef.current = gameState.handNumber;
+    }
+
+    // New community cards dealt (flop, turn, river)
+    const statusChanged = gameState.status !== prevStatusRef.current;
+    if (statusChanged && (gameState.status === "flop" || gameState.status === "turn" || gameState.status === "river")) {
+      playSound("cardFlip");
+    }
+    prevStatusRef.current = gameState.status;
+
+    // It's now my turn - play notification sound
+    if (isMyTurn && !prevIsMyTurnRef.current) {
+      playSound("yourTurn");
+      hapticFeedback("heavy");
+    }
+    prevIsMyTurnRef.current = !!isMyTurn;
+
+    // Win sound when pot is won (showdown completed and we got chips)
+    if (gameState.status === "waiting" && myPlayer && myPlayer.chipStack > chipStack) {
+      playSound("win");
+    }
+  }, [gameState, isMyTurn, myPlayer, chipStack, playSound, hapticFeedback]);
 
   // Debug: log turn state
   useEffect(() => {
@@ -424,8 +495,26 @@ export function PokerTable({
       amount,
     }));
 
+    // Play appropriate sound based on action
+    switch (action) {
+      case "fold":
+        playSound("fold");
+        break;
+      case "check":
+        playSound("check");
+        break;
+      case "call":
+      case "bet":
+      case "raise":
+        playSound("chips");
+        break;
+      case "all_in":
+        playSound("allIn");
+        break;
+    }
+
     hapticFeedback("medium");
-  }, [tableId, mySeat, isMyTurn, hapticFeedback]);
+  }, [tableId, mySeat, isMyTurn, hapticFeedback, playSound]);
 
   const handleSeatClick = (seatNumber: number) => {
     // Don't allow sitting if already seated
@@ -657,23 +746,39 @@ export function PokerTable({
               </text>
             </svg>
 
-            {gameState?.pot !== undefined && gameState.pot > 0 && (
-              <div className="absolute top-[35%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-emerald-300 shadow-md" />
-                  <span className="text-sm text-zinc-300">${gameState.pot.toFixed(0)}</span>
-                </div>
-                <div className="text-emerald-400 text-xs font-medium">Total Pot</div>
-                <div className="text-white font-bold text-lg">${gameState.pot.toFixed(0)}</div>
-              </div>
-            )}
+            <AnimatePresence>
+              {gameState?.pot !== undefined && gameState.pot > 0 && (
+                <motion.div 
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 1.5, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="absolute top-[35%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
+                >
+                  <motion.div 
+                    className="flex items-center gap-1"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-emerald-300 shadow-md" />
+                    <span className="text-sm text-zinc-300">${gameState.pot.toFixed(0)}</span>
+                  </motion.div>
+                  <div className="text-emerald-400 text-xs font-medium">Total Pot</div>
+                  <div className="text-white font-bold text-lg">${gameState.pot.toFixed(0)}</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {gameState?.communityCards && gameState.communityCards.length > 0 && (
-              <div className="absolute top-[45%] left-1/2 -translate-x-1/2 flex gap-1">
+              <motion.div 
+                className="absolute top-[45%] left-1/2 -translate-x-1/2 flex gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
                 {gameState.communityCards.map((card, i) => (
-                  <PlayingCard key={i} card={card} size="md" />
+                  <PlayingCard key={i} card={card} size="md" delay={i * 0.1} />
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {Array.from({ length: maxSeats }).map((_, i) => {

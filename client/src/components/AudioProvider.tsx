@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
-type GameType = "crash" | "mines" | "dice" | "slots" | "plinko" | "scissors" | "turtle" | "lobby";
+type GameType = "crash" | "mines" | "dice" | "slots" | "plinko" | "scissors" | "turtle" | "lobby" | "poker";
 
 interface AudioSettings {
   musicEnabled: boolean;
@@ -29,6 +29,7 @@ const MUSIC_TRACKS: Record<GameType, string> = {
   plinko: "https://cdn.pixabay.com/download/audio/2022/05/16/audio_545f469438.mp3",
   scissors: "https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3",
   turtle: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_8cb749d484.mp3",
+  poker: "https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3", // Jazz lounge for poker
 };
 
 const SOUND_EFFECTS = {
@@ -40,6 +41,14 @@ const SOUND_EFFECTS = {
   reveal: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_bf51797db5.mp3",
   crash: "https://cdn.pixabay.com/download/audio/2021/08/04/audio_12b0c7443c.mp3",
   cashout: "https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3",
+  cardDeal: "https://cdn.pixabay.com/download/audio/2022/03/10/audio_2ddc77c2f4.mp3",
+  cardFlip: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_bf51797db5.mp3",
+  chips: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_7a6dced38d.mp3",
+  check: "https://cdn.pixabay.com/download/audio/2022/03/10/audio_c78ab46e31.mp3",
+  fold: "https://cdn.pixabay.com/download/audio/2021/08/04/audio_c8c8a73467.mp3",
+  allIn: "https://cdn.pixabay.com/download/audio/2022/10/17/audio_8cc694ac4b.mp3",
+  yourTurn: "https://cdn.pixabay.com/download/audio/2022/03/24/audio_7ae3b84dc0.mp3",
+  timer: "https://cdn.pixabay.com/download/audio/2022/03/24/audio_7ae3b84dc0.mp3",
 };
 
 const DEFAULT_SETTINGS: AudioSettings = {
