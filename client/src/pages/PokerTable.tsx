@@ -267,6 +267,10 @@ export function PokerTable({
       
       if (data.type === "poker_state") {
         console.log("Poker state received, players:", data.state.players);
+        console.log("Looking for my seat, user.id:", user?.id, "type:", typeof user?.id);
+        data.state.players.forEach((p: PokerPlayerState) => {
+          console.log("Player odejs:", p.odejs, "type:", typeof p.odejs, "match:", String(p.odejs) === String(user?.id));
+        });
         setGameState(data.state);
         
         const me = data.state.players.find((p: PokerPlayerState) => String(p.odejs) === String(user?.id));
