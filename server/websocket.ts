@@ -37,6 +37,7 @@ class GameWebSocket {
   private recentBets: LiveBet[] = [];
   private maxRecentBets = 50;
   private tableSubscriptions: Map<string, Set<string>> = new Map();
+  private lobbySubscribers: Set<string> = new Set(); // clientIds subscribed to lobby updates
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map(); // key: odejs
   private playerTableMap: Map<string, string> = new Map(); // odejs -> tableId
 
@@ -89,6 +90,7 @@ class GameWebSocket {
           this.unsubscribeFromTable(clientId, client.tableId);
         }
         this.clients.delete(clientId);
+        this.lobbySubscribers.delete(clientId);
         this.broadcastOnlineCount();
       });
 
@@ -143,7 +145,26 @@ class GameWebSocket {
       case "stand_up":
         this.handleStandUp(clientId, message, pokerManager);
         break;
+
+      case "subscribe_lobby":
+        this.lobbySubscribers.add(clientId);
+        break;
+
+      case "unsubscribe_lobby":
+        this.lobbySubscribers.delete(clientId);
+        break;
     }
+  }
+
+  // Broadcast lobby update to all subscribers
+  broadcastLobbyUpdate() {
+    const message = JSON.stringify({ type: "lobby_update" });
+    Array.from(this.lobbySubscribers).forEach(clientId => {
+      const client = this.clients.get(clientId);
+      if (client?.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(message);
+      }
+    });
   }
 
   private startDisconnectTimer(odejs: string, tableId: string, pokerManager: ReturnType<typeof getPokerManager>) {
@@ -167,6 +188,9 @@ class GameWebSocket {
         await storage.removePlayerFromTable(tableId, odejs);
         const seats = await storage.getTableSeats(tableId);
         await storage.updateTablePlayerCount(tableId, seats.length);
+        
+        // Notify lobby about player count change
+        this.broadcastLobbyUpdate();
         
         console.log(`Player ${odejs} removed after disconnect timeout`);
       }
@@ -302,6 +326,8 @@ class GameWebSocket {
 
     if (success) {
       console.log(`Player ${username} sat at table ${tableId} seat ${seatNumber} with ${buyIn} chips`);
+      // Notify lobby subscribers about player count change
+      this.broadcastLobbyUpdate();
       if (pokerManager.canStartHand(tableId)) {
         setTimeout(() => {
           pokerManager.startNewHand(tableId);
@@ -318,6 +344,8 @@ class GameWebSocket {
   private handleStandUp(clientId: string, message: any, pokerManager: ReturnType<typeof getPokerManager>) {
     const { tableId, seatNumber } = message;
     pokerManager.removePlayer(tableId, seatNumber);
+    // Notify lobby subscribers about player count change
+    this.broadcastLobbyUpdate();
   }
 
   private handlePokerAction(clientId: string, message: any, pokerManager: ReturnType<typeof getPokerManager>) {

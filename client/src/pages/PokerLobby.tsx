@@ -1,10 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Users, Coins } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Users, Coins, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BalanceDisplay } from "@/components/BalanceDisplay";
 import { AudioControls } from "@/components/AudioControls";
 import { useTelegram } from "@/components/TelegramProvider";
-import type { PokerTable } from "@shared/schema";
+import type { PokerTable, PokerSeat } from "@shared/schema";
 
 interface PokerLobbyProps {
   balance: number;
@@ -14,19 +15,78 @@ interface PokerLobbyProps {
 }
 
 export function PokerLobby({ balance, onBack, onJoinTable, onOpenWallet }: PokerLobbyProps) {
-  const { hapticFeedback } = useTelegram();
+  const { user, hapticFeedback } = useTelegram();
+  const queryClient = useQueryClient();
+  const wsRef = useRef<WebSocket | null>(null);
+  const [myTableId, setMyTableId] = useState<string | null>(null);
 
   const { data: tables, isLoading } = useQuery<PokerTable[]>({
     queryKey: ["/api/poker/tables"],
+    refetchInterval: 5000, // Fallback polling every 5 seconds
   });
 
-  const groupedTables = tables?.reduce((acc, table) => {
+  // Get player's current seat
+  const { data: mySeats } = useQuery<PokerSeat[]>({
+    queryKey: [`/api/poker/my-seats/${user?.id}`],
+    enabled: !!user?.id,
+  });
+
+  // Update myTableId when seats change
+  useEffect(() => {
+    if (mySeats && mySeats.length > 0) {
+      setMyTableId(mySeats[0].tableId);
+    } else {
+      setMyTableId(null);
+    }
+  }, [mySeats]);
+
+  // WebSocket for real-time updates
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: "subscribe_lobby" }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "lobby_update") {
+        // Invalidate tables query to refresh
+        queryClient.invalidateQueries({ queryKey: ["/api/poker/tables"] });
+      }
+      if (data.type === "table_players_update") {
+        // Update specific table's player count
+        queryClient.invalidateQueries({ queryKey: ["/api/poker/tables"] });
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [queryClient]);
+
+  // Sort tables - player's table first, then by player count
+  const sortedTables = [...(tables || [])].sort((a, b) => {
+    // Player's table first
+    if (a.id === myTableId) return -1;
+    if (b.id === myTableId) return 1;
+    // Then by player count (descending)
+    return b.currentPlayers - a.currentPlayers;
+  });
+
+  const groupedTables = sortedTables.reduce((acc, table) => {
     if (!acc[table.limit]) acc[table.limit] = [];
     acc[table.limit].push(table);
     return acc;
-  }, {} as Record<string, PokerTable[]>) || {};
+  }, {} as Record<string, PokerTable[]>);
 
+  // Show player's table section first if they're sitting
   const limits = ["NL2", "NL5", "NL10", "NL25", "NL50", "NL100", "NL200", "NL500"];
+
+  // Find player's table info
+  const myTable = tables?.find(t => t.id === myTableId);
 
   return (
     <div className="min-h-screen bg-black" data-testid="page-poker-lobby">
@@ -76,6 +136,51 @@ export function PokerLobby({ balance, onBack, onJoinTable, onOpenWallet }: Poker
           </p>
         </div>
 
+        {/* Player's active table - shown at top with highlight */}
+        {myTable && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+              <span className="text-lg font-bold text-yellow-400">Ваш стол</span>
+            </div>
+            <button
+              onClick={() => {
+                hapticFeedback("medium");
+                onJoinTable(myTable.id);
+              }}
+              className="w-full bg-gradient-to-r from-yellow-900/40 to-amber-900/30 hover:from-yellow-800/50 hover:to-amber-800/40 border-2 border-yellow-500/50 rounded-xl p-4 transition-all shadow-lg shadow-yellow-500/20"
+              data-testid={`table-active-${myTable.id}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{myTable.countryFlag}</span>
+                  <div className="text-left">
+                    <div className="font-medium text-white flex items-center gap-2">
+                      {myTable.name}
+                      <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold">
+                        {myTable.limit}
+                      </span>
+                    </div>
+                    <div className="text-sm text-zinc-300">
+                      {myTable.maxSeats}-max • ${myTable.minBuyIn.toFixed(2)} - ${myTable.maxBuyIn.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 text-yellow-400">
+                    <Users className="w-4 h-4" />
+                    <span className="text-sm font-bold">{myTable.currentPlayers}/{myTable.maxSeats}</span>
+                  </div>
+                  <div className="bg-yellow-500 text-black px-3 py-1 rounded-lg text-sm font-bold">
+                    Вернуться
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
@@ -83,7 +188,8 @@ export function PokerLobby({ balance, onBack, onJoinTable, onOpenWallet }: Poker
         ) : (
           <div className="space-y-6">
             {limits.map(limit => {
-              const limitTables = groupedTables[limit];
+              // Filter out player's table from regular list if shown above
+              const limitTables = groupedTables[limit]?.filter(t => t.id !== myTableId);
               if (!limitTables?.length) return null;
 
               return (

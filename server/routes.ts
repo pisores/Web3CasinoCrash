@@ -1377,6 +1377,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get player's current seats (which tables they're sitting at)
+  app.get("/api/poker/my-seats/:odejs", async (req, res) => {
+    try {
+      const { odejs } = req.params;
+      const seats = await storage.getPlayerSeats(odejs);
+      res.json(seats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get player seats" });
+    }
+  });
+
   // Get specific poker table
   app.get("/api/poker/tables/:id", async (req, res) => {
     try {

@@ -44,6 +44,7 @@ export interface IStorage {
   getPokerTable(id: string): Promise<PokerTable | undefined>;
   getTableSeats(tableId: string): Promise<PokerSeat[]>;
   getPlayerSeat(tableId: string, odejs: string): Promise<PokerSeat | undefined>;
+  getPlayerSeats(odejs: string): Promise<PokerSeat[]>;
   addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat>;
   removePlayerFromTable(tableId: string, odejs: string): Promise<void>;
   updateTablePlayerCount(tableId: string, count: number): Promise<void>;
@@ -252,6 +253,12 @@ export class DatabaseStorage implements IStorage {
       and(eq(pokerSeats.tableId, tableId), eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
     );
     return seat;
+  }
+
+  async getPlayerSeats(odejs: string): Promise<PokerSeat[]> {
+    return db.select().from(pokerSeats).where(
+      and(eq(pokerSeats.odejs, odejs), eq(pokerSeats.isActive, true))
+    );
   }
 
   async addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat> {
@@ -658,6 +665,10 @@ export class MemStorage implements IStorage {
 
   async getPlayerSeat(tableId: string, odejs: string): Promise<PokerSeat | undefined> {
     return undefined;
+  }
+
+  async getPlayerSeats(odejs: string): Promise<PokerSeat[]> {
+    return [];
   }
 
   async addPlayerToTable(tableId: string, odejs: string, seatNumber: number, chipStack: number): Promise<PokerSeat> {
