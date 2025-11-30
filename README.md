@@ -60,7 +60,8 @@
 ## 📩 Связь для покупки
 
 Напишите в Telegram: @deathl1ne  
-
+Кошелек (ton)
+UQDLDdhCpfH1wKk66JwdSgOHbTDAIDF9XhNXtRBMT5UDp38V
 
 ---
 
@@ -124,7 +125,8 @@ The price includes:
 ## 📩 Contact for purchase
 
 Write to Telegram: @deathl1ne or @paniccar
-
+wallet (ton)
+UQDLDdhCpfH1wKk66JwdSgOHbTDAIDF9XhNXtRBMT5UDp38V
 
 ---
 
